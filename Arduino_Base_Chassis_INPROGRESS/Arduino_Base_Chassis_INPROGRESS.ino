@@ -12,6 +12,7 @@ void setup() {
   myIn.begin(22);
   leftMotorServo.attach(20);
   rightMotorServo.attach(21);
+  // dont forget to add the rest of the servos/motor library for final
 }
 
 void loop() {
@@ -22,11 +23,6 @@ void loop() {
   int turnValue= 0;
   int throttleValue = myIn.read(2);
   int turningValue= myIn.read(4);
-  //ARCADE DRIVE LOGIC PSEUDOCODE
-  //throttleValue mapped to the motor values
-  //
-  //
-  //
   leftMotorValue= map(throttleValue,1000,2000,0,180);
   rightMotorValue = map(throttleValue,1000,2000,0,180);
   turnValue = map(turningValue,1000,2000,-180,180);
