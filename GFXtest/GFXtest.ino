@@ -27,7 +27,7 @@ OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 GFXcanvas16 canvas(8, 8);
 void setup() {
   Serial.begin(115200);
-  canvas.fillScreen(RED);
+  canvas.drawCircle(4, 4, 3, RED);
   leds.begin();
   leds.show();
 }
