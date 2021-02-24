@@ -6,7 +6,7 @@ Servo rightMotorServo;
 PulsePositionOutput myOut;
 PulsePositionInput myIn;
 
-
+  
 
 void setup() {
   // put your setup code here, to run once:
@@ -20,31 +20,32 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  int leftMotorValue = 90;
-  int rightMotorValue = 90;
+  float leftMotorValue = 1500;
+  float rightMotorValue = 1500;
 
-  int turnValue= 0;
+
   int throttleValue = myIn.read(2);
   int turningValue= myIn.read(4);
-  leftMotorValue= map(throttleValue,1000,2000,0,180);
-  rightMotorValue = map(throttleValue,1000,2000,0,180);
-  turnValue = map(turningValue,1000,2000,-180,180);
-  leftMotorValue= leftMotorValue + turnValue;
-  rightMotorValue = rightMotorValue - turnValue; 
-  if (leftMotorValue > 180){
-    leftMotorValue= 180;
-  }
-  else if (leftMotorValue < 0){
-    leftMotorValue = 0;
-  }
-  if (rightMotorValue > 180){
-    rightMotorValue= 180;
-  }
-  else if (rightMotorValue < 0){
-    rightMotorValue = 0;
-  }
-  leftMotorServo.write(leftMotorValue);
-  rightMotorServo.write(rightMotorValue);
-  
+  turningValue = map(turningValue,1000,2000,-2000,2000);
+  Serial.println(throttleValue);
+  Serial.println(turningValue);
+  leftMotorValue= throttleValue +turningValue;
+  rightMotorValue = throttleValue - turningValue;
+ 
+  //replace this safety with normalized value
+  leftMotorValue = (leftMotorValue + 1000) / (4000 +1000);
+  rightMotorValue = (rightMotorValue + 1000) / (4000 + 1000);
+  //Serial.println(leftMotorValue);
+  //Serial.println(rightMotorValue);
+  leftMotorValue= map(leftMotorValue,0,1,1000,2000);
+  rightMotorValue= map(rightMotorValue,0,1,1000,2000);
+  //Serial.println(leftMotorValue);
+  //Serial.println(rightMotorValue);
+  leftMotorServo.writeMicroseconds(leftMotorValue);
+  rightMotorServo.writeMicroseconds(rightMotorValue);
+  //2 or 3 motors, pwm not servo
+  // pwm is 0 to 255
+  // servo is 0 to 180
+  // can use the servo.writeMicroseconds to avoid the map in text
   
 }
