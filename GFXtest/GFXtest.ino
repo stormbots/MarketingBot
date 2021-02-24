@@ -23,29 +23,22 @@ void setup() {
 }
 
 void loop() {
-  writeLeds(leds, canvas, 8, 8);
+  writeLeds(&leds, &canvas, WIDTH, HEIGHT);
   leds.show();
-  Serial.println("helllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllo");
   
 
 }
 
-void writeLeds(OctoWS2811 leds, GFXcanvas16 canvas, int canvasWidth, int canvasHeight){
+void writeLeds(OctoWS2811 *led, GFXcanvas16 *grid, int canvasWidth, int canvasHeight){
   int ledNum = 0;
   for (int i = 0; i < canvasWidth; i++){
-    Serial.println(i);
     for (int j = 0; j < canvasHeight; j++){
-      Serial.println(j);
-      int rgb = canvas.getPixel(i, j);
-      Serial.println("Pixel Value get");
+      int rgb = grid->getPixel(i, j);
       int red = (rgb >> 16) & 0xFF;
       int green = (rgb >> 8) & 0xFF;
       int blue = rgb & 0xFF;
-      Serial.println("conversion");
-      leds.setPixel(ledNum, red, green, blue);
-      Serial.println("set pixel");
-      ledNum++;
-      Serial.println("increase num");
+      led->setPixel(ledNum, red, green, blue);
+      ledNum += 1;
     }
   }
 }
