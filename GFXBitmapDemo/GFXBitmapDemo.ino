@@ -5,6 +5,17 @@
 #define HEIGHT 8
 #define NUM_OF_LEDS 64
 
+// Color definitions
+#define BLACK 0x0000
+#define BLUE 0x001F
+#define RED 0xF800
+#define GREEN 0x07E0
+#define CYAN 0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW 0xFFE0
+#define WHITE 0xFFFF
+
+
 const int ledsPerStrip = 64;
 
 DMAMEM int displayMemory[ledsPerStrip*6];
@@ -16,10 +27,9 @@ OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 GFXcanvas16 canvas(8, 8);
 void setup() {
   Serial.begin(115200);
-  canvas.fillScreen(0xF800);
+  canvas.drawCircle(4, 4, 3, RED);
   leds.begin();
   leds.show();
-  delay(9000);
 }
 
 void loop() {
@@ -34,9 +44,9 @@ void writeLeds(OctoWS2811 *led, GFXcanvas16 *grid, int canvasWidth, int canvasHe
   for (int i = 0; i < canvasWidth; i++){
     for (int j = 0; j < canvasHeight; j++){
       int rgb = grid->getPixel(i, j);
-      int red = (rgb >> 16) & 0xFF;
-      int green = (rgb >> 8) & 0xFF;
-      int blue = rgb & 0xFF;
+      int red = (rgb>>11)&0x001f;
+      int green=(rgb>>5) &0x003f;
+      int blue= (rgb)    &0x001f;
       led->setPixel(ledNum, red, green, blue);
       ledNum += 1;
     }
