@@ -15,7 +15,6 @@
 #define YELLOW 0xFFE0
 #define WHITE 0xFFFF
 
-
 const int ledsPerStrip = 64;
 
 DMAMEM int displayMemory[ledsPerStrip*6];
@@ -23,11 +22,18 @@ int drawingMemory[ledsPerStrip*6];
 
 const int config = WS2811_GRB | WS2811_800kHz;
 
+// Apple Logo, 8x8px, 
+//Does not look good because of the low resolution
+const unsigned char appleLogo [] PROGMEM = {
+  0x00, 0x08, 0x7e, 0x7c, 0xfc, 0x7e, 0x7e, 0x24
+};
+
+
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 GFXcanvas16 canvas(8, 8);
 void setup() {
   Serial.begin(115200);
-  canvas.drawCircle(4, 4, 3, RED);
+  canvas.drawBitmap(0, 0, appleLogo, 8, 8, RED);
   leds.begin();
   leds.show();
 }
@@ -44,9 +50,9 @@ void writeLeds(OctoWS2811 *led, GFXcanvas16 *grid, int canvasWidth, int canvasHe
   for (int i = 0; i < canvasWidth; i++){
     for (int j = 0; j < canvasHeight; j++){
       int rgb = grid->getPixel(i, j);
-      int red = (rgb>>11)&0x001f;
-      int green=(rgb>>5) &0x003f;
-      int blue= (rgb)    &0x001f;
+      int red = (rgb>>11)& 0x001f;
+      int green=(rgb>>5) & 0x003f;
+      int blue= (rgb)    & 0x001f;
       led->setPixel(ledNum, red, green, blue);
       ledNum += 1;
     }
