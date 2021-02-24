@@ -19,7 +19,6 @@ void setup() {
   canvas.fillScreen(0xF800);
   leds.begin();
   leds.show();
-  delay(9000);
 }
 
 void loop() {
