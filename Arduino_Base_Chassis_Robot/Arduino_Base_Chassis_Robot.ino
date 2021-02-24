@@ -1,8 +1,13 @@
+#include <Motor.h>
 #include <PulsePosition.h>
 #include <Servo.h>
-#include <Motor.h>
-Servo leftMotorServo;
-Servo rightMotorServo;
+
+Servo leftMotorServo1;
+Servo rightMotorServo1;
+Servo leftMotorServo2;
+Servo rightMotorServo2;
+Servo leftMotorServo3;
+Servo rightMotorServo3;
 PulsePositionOutput myOut;
 PulsePositionInput myIn;
 
