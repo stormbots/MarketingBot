@@ -16,80 +16,68 @@ void setup() {
   leftMotorServo.attach(20);
   rightMotorServo.attach(21);
   // dont forget to add the rest of the servos/motor library for final
+  //TODO:
+  //send the values on to the top
+  //add the status of chassis
+  
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  float leftMotorValue = 1500;
-  float rightMotorValue = 1500;
+  float leftMotorSpeed = 1500;
+  float rightMotorSpeed = 1500;
   
   int chassisPowerMode = 3;
 
   float throttleValue = myIn.read(2);
   float turningValue= myIn.read(4);
-  float chassisPower = myIn.read(5);
+  float chassisPowerValue = myIn.read(5);
   
   throttleValue = constrain(throttleValue,1000,2000);
   turningValue = constrain(turningValue,1000,2000);
-  chassisPower = constrain(chassisPower,1000,2000);
+  chassisPowerValue = constrain(chassisPowerValue,1000,2000);
   
   //Disabled Mode
-  if (chassisPower <=1250){
+  if (chassisPowerValue <=1250){
     throttleValue = 1500;
     turningValue = 1500;
     chassisPowerMode =1;
   }
 
   //Slow Mode
-  else if(chassisPower <= 1750){
-  
-   // this will retain full acceleration with a lower maximum speed
-   throttleValue = constrain(throttleValue,1250,1750);
-   turningValue = constrain(turningValue,1250,1750);
-   //this will just cut everything in half
-   if (throttleValue >= 1500){
-    throttleValue = map(throttleValue, 1500,2000,1500,1750);
-   }
-   else{
-    throttleValue = map(throttleValue, 1000, 1499,1250,1499);
-   }
-   if (turningValue >= 1500){
-    turningValue = map(turningValue, 1500,2000,1500,1750);
-   }
-   else{
-    turningValue = map(turningValue, 1000, 1499,1250,1499);
-   }
+  else if(chassisPowerValue <= 1750){
+   throttleValue = map(throttleValue, 1000,2000,1250,1750);
+   turningValue = map(turningValue, 1500,2000,1500,1750);
    chassisPowerMode =2;
  }
  else{
    chassisPowerMode = 3;
  }
-  
- //send the values on to the top
  
-  
   turningValue = map(turningValue,1000,2000,-2000,2000);
   
-  leftMotorValue= throttleValue +turningValue;
-  rightMotorValue = throttleValue - turningValue;
+  leftMotorSpeed= throttleValue +turningValue;
+  rightMotorSpeed = throttleValue - turningValue;
 
 
  
  {
     //convert our ranges
-    float vLeft  = map(leftMotorValue,1000,2000,-1,1);
-    float vRight = map(rightMotorValue,1000,2000,-1,1);
+    float vLeft  = map(leftMotorSpeed,1000,2000,-1,1);
+    float vRight = map(rightMotorSpeed,1000,2000,-1,1);
     float vMax = abs(max(vLeft,vRight));
     if(vMax > 1){
-      leftMotorValue =  map(vLeft/vMax,-1,1,1000,2000);
-      rightMotorValue =  map(vRight/vMax,-1,1,1000,2000);
+      leftMotorSpeed =  map(vLeft/vMax,-1,1,1000,2000);
+      rightMotorSpeed =  map(vRight/vMax,-1,1,1000,2000);
     }
  }
+  leftMotorServo.writeMicroseconds(leftMotorSpeed);
+  rightMotorServo.writeMicroseconds(rightMotorSpeed);
+  //SERVO TO PPM ||DON'T USE ON TEST SETUP||
+  //leftMotorSpeed= map(leftMotorSpeed,1000,2000,0,255);
+  //rightMotorSpeed = map(rightMotorSpeed,1000,2000,0,255);
+  //analogWrite(21,leftMotorSpeed);
+  //analogWrite(22,rightMotorSpeed);
   
-  leftMotorServo.writeMicroseconds(leftMotorValue);
-  rightMotorServo.writeMicroseconds(rightMotorValue);
-  //2 or 3 motors, pwm not servo
-  // pwm is 0 to 255
-  // servo is 0 to 180
-  // can use the servo.writeMicroseconds to avoid the map in text
+  
 }
