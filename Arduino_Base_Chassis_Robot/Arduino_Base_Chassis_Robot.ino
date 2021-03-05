@@ -17,7 +17,7 @@ PulsePositionInput myIn;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  myOut.begin(9);
+  myOut.begin(//whatever pin it is on the robot);
   myIn.begin(//whatever pin it is on the robot);
   leftMotorServo1.attach(//whatever pin it is on the robot);
   leftMotorServo2.attach(//whatever pin it is on the robot);
@@ -28,6 +28,8 @@ void setup() {
   DualPWM leftMotors(//pins for the left servos);
   DualPWM rightMotors(//pins for the right servos);
   // dont forget to add the rest of the servos/motor library for final
+  
+  
 }
 
 void loop() {
@@ -35,7 +37,7 @@ void loop() {
   float leftMotorSpeed = 1500;
   float rightMotorSpeed = 1500;
 
-  int chassisPowerMode = 3;
+  
  
   float throttleValue = myIn.read(2);
   float turningValue= myIn.read(4); 
@@ -49,18 +51,28 @@ void loop() {
   if (chassisPowerValue <=1250){
     throttleValue = 1500;
     turningValue = 1500;
-    chassisPowerMode =1;
+    
   }
 
   //Slow Mode
   else if(chassisPowerValue <= 1750){
    throttleValue = map(throttleValue, 1000,2000,1250,1750);
    turningValue = map(turningValue, 1500,2000,1500,1750);
-   chassisPowerMode =2;
+   
  }
- else{
-   chassisPowerMode = 3;
- }
+ 
+ 
+ //Copy our control signals out to our Module on the robot
+ //NOTE: Controller only provides 6, but the PulsePosition allows 8.
+ for(int i=1;i<=8; i++){
+    myOut.write(i,myIn.read(1));
+  }
+  //For the chassis
+  myOut.write(2,throttleValue);
+  myOut.write(4,turningValue);
+
+
+
  
   turningValue = map(turningValue,1000,2000,-2000,2000);
   leftMotorSpeed= throttleValue + turningValue;
