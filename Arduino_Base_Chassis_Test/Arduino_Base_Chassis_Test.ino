@@ -42,15 +42,14 @@ void loop() {
    throttleValue = map(throttleValue, 1000,2000,1250,1750);
    turningValue = map(turningValue, 1500,2000,1500,1750);   
   }
-  else{ 
-    //Nothing to do
-  }
+  
  
   //Copy our control signals out to our Module on the robot
   //NOTE: Controller only provides 6, but the PulsePosition allows 8.
-  for(int i=1; i++; i<=8){
+  for(int i=1;i<=8; i++){
     myOut.write(i,myIn.read(1));
   }
+  //For the chassis
   myOut.write(2,throttleValue);
   myOut.write(4,turningValue);
 
