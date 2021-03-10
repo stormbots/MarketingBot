@@ -41,6 +41,7 @@ int inc = 0;
 
 
 
+
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 GFXcanvas16 canvas(8, 8);
 void setup() {
@@ -63,6 +64,7 @@ void loop() {
   if (inc <= -90){
     inc = 8;
   }
+  
 
 
 }
