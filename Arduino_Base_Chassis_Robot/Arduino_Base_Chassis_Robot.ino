@@ -98,13 +98,15 @@ void loop() {
     throttleValue = map(throttleValue, 1000,2000,1250,1750);
     turningValue = map(turningValue, 1500,2000,1500,1750);
   }
-  else{
-    //Leave signal alone
+ 
+  //Copy our control signals out to our Module on the robot
+  //NOTE: Controller only provides 6, but the PulsePosition allows 8.
+  for(int i=1;i<=8; i++){
+    radioOutput.write(i,radioInput.read(1));
   }
-
-  //Copy radio signal to output
-  //TODO : Add this.
-
+  //For the chassis
+  radioOutput.write(2,throttleValue);
+  radioOutput.write(4,turningValue);
 
   /** Generate arcade drive left/right outputs */
   turningValue = map(turningValue,1000,2000,-2000,2000);
