@@ -1,6 +1,7 @@
 
 #include <PulsePosition.h>
 #include <Servo.h>
+#include <ElapsedMillis.h>
 
 //LED Pins
 //These assignments cannot change: Hardware defined
@@ -52,7 +53,8 @@ PulsePositionInput radioInput;
 
 
 /*****************************************/
-
+#define BUILT_IN_LED 13
+elapsedMillis heartbeat;
 
 
 void setup() {
@@ -62,6 +64,8 @@ void setup() {
   radioInput.begin(RADIO_IN_PIN);
 
   light_setup();
+
+  pinMode(13,OUTPUT);
 }
 
 void loop() {
@@ -127,4 +131,11 @@ void loop() {
   
   /* Run LED strips */
   light_loop();
+
+
+  /* Check our system heartbeat */
+  if(heartbeat > 1000){
+    heartbeat=0;
+    digitalWrite(BUILT_IN_LED,!digitalRead(BUILT_IN_LED));
+  }
 }
