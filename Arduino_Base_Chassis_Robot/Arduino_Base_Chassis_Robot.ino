@@ -96,7 +96,7 @@ void loop() {
   else if(chassisPowerValue <= 1750){
   //Slow Mode
     throttleValue = map(throttleValue, 1000,2000,1250,1750);
-    turningValue = map(turningValue, 1500,2000,1500,1750);
+    turningValue = map(turningValue, 1000,2000,1250,1750);
   }
  
   /** Copy our input controls out to the module */
