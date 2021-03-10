@@ -4,6 +4,8 @@
 /* Hardware: */
 #define REVOLVER_MOTOR_PIN 1
 
+#define ANGLE_MOTOR_PIN 3
+
 #define MAG_ENCODER_A_PIN 1
 #define MAG_ENCODER_A_PIN 2
 
@@ -15,7 +17,6 @@
 
 #define CYLINDER_CLAMP_A_PIN 3
 #define CYLINDER_CLAMP_B_PIN 3
-
 
 #define BUILT_IN_LED 13
 
@@ -62,19 +63,15 @@ engage cylinderClamp
 wait for pressure (timer probably)
 open pressureChamber pressure (if it's sufficiently pressurized)
 wait for pressureChamber to empty (timer again)
-seal pressureChamber (rebuild pressure, background)
-disengage cylinderClamp (some wait time)
-release indexLock (wait some time)
+//recovery
+  seal pressureChamber (rebuild pressure, background)
+  disengage cylinderClamp (some wait time)
+  release indexLock (wait some time)
+//reloading
 start revolver
   (wait some time to clear lock)
   engage indexLock
   wait for indexSwitch || max runtime exceeded
-
-
 */
-
-
-
-
 
 
