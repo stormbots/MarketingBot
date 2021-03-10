@@ -127,9 +127,9 @@ void loop() {
   analogWrite(MOTOR_LEFT_1_PIN,leftMotorSpeed);
   analogWrite(MOTOR_LEFT_2_PIN,leftMotorSpeed);
   analogWrite(MOTOR_LEFT_3_PIN,leftMotorSpeed);
-  analogWrite(MOTOR_RIGHT_1_PIN,leftMotorSpeed);
-  analogWrite(MOTOR_RIGHT_2_PIN,leftMotorSpeed);
-  analogWrite(MOTOR_RIGHT_3_PIN,leftMotorSpeed);
+  analogWrite(MOTOR_RIGHT_1_PIN,rightMotorSpeed);
+  analogWrite(MOTOR_RIGHT_2_PIN,rightMotorSpeed);
+  analogWrite(MOTOR_RIGHT_3_PIN,rightMotorSpeed);
   
   /* Run LED strips */
   light_loop();
