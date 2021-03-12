@@ -1,5 +1,6 @@
 #include <ElapsedMillis.h>
 #include <PulsePosition.h>
+#include <Bounce.h>
 
 /* Hardware: */
 #define REVOLVER_MOTOR_PIN 1
@@ -18,7 +19,11 @@
 #define CYLINDER_CLAMP_A_PIN 3
 #define CYLINDER_CLAMP_B_PIN 3
 
+#define INDEX_LOCK_PIN 3
+
 #define BUILT_IN_LED 13
+
+Bounce indexSwitch=Bounce(INDEX_LOCK_PIN,10);
 
 
 void setup(){
@@ -39,7 +44,7 @@ void loop(){
   /* Process */
   
 
-
+  run_state_machine();
 
 }
 
@@ -75,3 +80,55 @@ start revolver
 */
 
 
+enum State{
+  STARTUP,
+  PRESSURIZING,
+  IDLE,
+  FIRING,
+  RECOVERY,
+  RELOAD_UNLOCKED,
+  RELOAD_LOCKED,
+  RESET
+};
+State state=State.STARTUP;
+State last_state=State.RESET;
+ElapsedMillis timer;
+void run_state_machine(){
+  
+  //Do pre-state machine loop process
+  indexSwitch.update();
+
+
+  switch(state){
+    case STARTUP:
+      //run our code here
+      //lock index, 
+      digitalWrite(INDEX_LOCK_A_PIN,true);
+      //open pressure chamber
+      //power ON motor?
+      analogWrite(REVOLVER_MOTOR_PIN, 32?);
+
+      if(switch.read()==false){
+        state=PRESSURIZING;
+      }
+    break;
+    case PRESSURIZING:
+      // do state things
+      if(timer > 3000){
+        state = IDLE;
+      }
+    break;
+    case IDLE:
+    break;  
+  default:
+    //someone did something real weird
+    state=STARTUP;
+  }
+
+
+  //do post-state cleanup and checks
+  if(last_state != state){
+    timer=0;
+    last_state=state;
+  }
+}
