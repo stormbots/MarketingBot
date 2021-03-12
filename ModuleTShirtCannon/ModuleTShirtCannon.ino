@@ -39,6 +39,9 @@ void loop(){
   bool cannonTrigger = radioInput.read(6) <= 1250;
 
 
+  //Adjust angle and manage PIDs
+  //TODO
+
   run_state_machine(cannonTrigger);
 }
 
@@ -115,7 +118,9 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(CYLINDER_CLAMP_A_PIN,true);
       //dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
-      if (timer>3000){
+      //Make sure we've waited long enough to pressurize,
+      //and that a human has put the controller in the correct spot to fire.
+      if (cannonTrigger == false && timer>3000){
         state=IDLE;
       }
     break;
@@ -123,7 +128,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_A_PIN,true);
       //motor off
-      analogWrite(REVOLVER_MOTOR_PIN,0);
+      analogWrite(REVOLVER_MOTOR_PIN,127);
       //cylinder clamps closed
       digitalWrite(CYLINDER_CLAMP_A_PIN,false);
       //dump valve closed
@@ -143,7 +148,7 @@ void run_state_machine(bool cannonTrigger){
       //dump valve open
       digitalWrite(DUMP_VALVE_A_PIN,true);
       // if the timer is up for firing and the switch is flicked back to avoid accidents advance to recovery
-      if (timer >3000 && cannonTrigger < 1250){
+      if (timer > 3000){
         state = RECOVERY;
       }
     break;
@@ -184,8 +189,8 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(CYLINDER_CLAMP_A_PIN,true);
       //dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
-      // if timer expires or switch is tripped advance, value is placeholder
-      if (timer > 3000||indexSwitch.read()== false){
+      //if switch is tripped. Fallback safety timer.
+      if(indexSwitch.read()==false || timer>3000){
         state=PRESSURIZING;
       }
   }
