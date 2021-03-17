@@ -1,8 +1,9 @@
 
-#include <MiniPID.h>
+#include "MiniPID.h"
 #include <elapsedMillis.h>
 #include <PulsePosition.h>
 #include <Bounce.h>
+
 /* Hardware: */
 #define REVOLVER_MOTOR_PIN 1
 
@@ -33,6 +34,8 @@ PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
 
 Bounce indexSwitch = Bounce(INDEX_LOCK_PIN,10);
+MiniPID pid = MiniPID(1.0,0.0,0.0);
+
 
 Bounce elevationSwitch = Bounce(ELEVATION_SWITCH_PIN ,10);
 Bounce depressionSwitch = Bounce(DEPRESSION_SWITCH_PIN,10);
@@ -63,23 +66,26 @@ void loop(){
 
   //Adjust angle and manage PIDs
   //TODO
-  MiniPID pid=MiniPID(1,0,0);//needs to get actual values.
   //set any other PID configuration options here. 
   elevationSwitch.update();
   depressionSwitch.update();
- 
-  while(true){
-    //sensor is current position recieved from the mag encoder
-    //target is where the controller is set to. 
-    float target = radioCannonInput.read(3);// we might need to change the range on this
-    double output=pid.getOutput(sensor,target);
-    if (elevationSwitch.read() == false || depressionSwitch.read() == false){
-      output = 127;
-      //this is not right because of gravity. 
-    }
-    analogWrite(ELEVATION_MOTOR_PIN,output);
+
+ double sensor = 0; //temp variable
+  //sensor is current position recieved from the mag encoder
+  
+  //target is where the controller is set to. 
+  double target = radioCannonInput.read(3);// we might need to change the range on this
+
+  //double output = 0;
+
+  double output=pid.getOutput(sensor,target);
+  //TODO: This switch handling is incorrect
+  if (elevationSwitch.read() == false || depressionSwitch.read() == false){
+    output = 127;
+  }
+  //this is not right because of gravity. 
+  analogWrite(ELEVATION_MOTOR_PIN,output);
   delay(10);
-}
   run_state_machine(cannonTrigger);
 }
 
@@ -125,10 +131,10 @@ enum State{
   RELOAD_UNLOCKED,
   RELOAD_LOCKED,
   RESET
-}
+};
+enum State state = STARTUP;
+enum State last_state=RESET;
 
-State state = State.STARTUP;
-State last_state=State.RESET;
 void run_state_machine(bool cannonTrigger){
 
   indexSwitch.update();
