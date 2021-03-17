@@ -39,7 +39,7 @@ MiniPID pid = MiniPID(1.0,0.0,0.0);
 
 Bounce elevationSwitch = Bounce(ELEVATION_SWITCH_PIN ,10);
 Bounce depressionSwitch = Bounce(DEPRESSION_SWITCH_PIN,10);
-
+elapsedMillis verticalDriveTimer;
 elapsedMillis timer;
 elapsedMillis cannonHeartbeat;
 void setup(){
@@ -75,18 +75,29 @@ void loop(){
   
   //target is where the controller is set to. 
   double target = radioCannonInput.read(3);// we might need to change the range on this
+  
+  
+ 
 
-  //double output = 0;
-
+  
   double output=pid.getOutput(sensor,target);
   //TODO: This switch handling is incorrect
-  if (elevationSwitch.read() == false || depressionSwitch.read() == false){
-    output = 127;
+  if (elevationSwitch.fallingEdge() == false || depressionSwitch.fallingEdge() == false){
+   output = - output;
+  }
+  if (elevationSwitch.risingEdge() == false || depressionSwitch.risingEdge() == false){
+    //this should avoid oscillation by delaying the turn back towards the boundary
+    verticalDriveTimer = 0;
+    if (verticalDriveTimer == 100){
+       output = - output; 
+    }
+   
   }
   //this is not right because of gravity. 
   analogWrite(ELEVATION_MOTOR_PIN,output);
   delay(10);
   run_state_machine(cannonTrigger);
+  
 }
 
 // hardware:
