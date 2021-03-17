@@ -1,7 +1,7 @@
 
 #include <PulsePosition.h>
 #include <Servo.h>
-#include <ElapsedMillis.h>
+#include <elapsedMillis.h>
 
 //LED Pins
 //These assignments cannot change: Hardware defined
@@ -102,7 +102,7 @@ void loop() {
   /** Copy our input controls out to the module */
   //NOTE: PulsePosition allows 8, even if our controller doesn't
   for(int i=1;i<=8; i++){
-    radioOutput.write(i,radioInput.read(1));
+    radioOutput.write(i,radioInput.read(i));
   }
   //Write out throttle values, as these may be modified
   radioOutput.write(2,throttleValue);

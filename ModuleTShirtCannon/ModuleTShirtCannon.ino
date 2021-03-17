@@ -1,11 +1,13 @@
-#include <ElapsedMillis.h>
+
+#include <MiniPID.h>
+#include <elapsedMillis.h>
 #include <PulsePosition.h>
 #include <Bounce.h>
 /* Hardware: */
 #define REVOLVER_MOTOR_PIN 1
 
 #define MAG_ENCODER_A_PIN 1
-#define MAG_ENCODER_A_PIN 2
+#define MAG_ENCODER_B_PIN 2
 
 #define DUMP_VALVE_A_PIN 2
 #define DUMP_VALVE_B_PIN 2
@@ -16,32 +18,68 @@
 #define CYLINDER_CLAMP_A_PIN 3
 #define CYLINDER_CLAMP_B_PIN 3
 
+#define ELEVATION_MOTOR_PIN 3
+
 #define INDEX_LOCK_PIN 3
+
+#define ELEVATION_SWITCH_PIN 3
+#define DEPRESSION_SWITCH_PIN 3
+
 #define BUILT_IN_LED 13
 
+#define RADIO_IN_PIN 22
+#define RADIO_OUT_PIN 23
+PulsePositionOutput radioCannonOutput;
+PulsePositionInput radioCannonInput;
+
 Bounce indexSwitch = Bounce(INDEX_LOCK_PIN,10);
+
+Bounce elevationSwitch = Bounce(ELEVATION_SWITCH_PIN ,10);
+Bounce depressionSwitch = Bounce(DEPRESSION_SWITCH_PIN,10);
+
+elapsedMillis timer;
+elapsedMillis cannonHeartbeat;
 void setup(){
   pinMode(BUILT_IN_LED, OUTPUT);
+  radioCannonOutput.begin(RADIO_OUT_PIN);
+  radioCannonInput.begin(RADIO_IN_PIN);
+  
 }
 
 
 void loop(){
   /* Check our system heartbeat */
-  if (heartbeat > 1000){
-    heartbeat=0;
+  if (cannonHeartbeat > 1000){
+    cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
 
   //TODO: Read radio inputs
   //TODO: Read safety signals somehow
-
+   
   /* Process */
-  bool cannonTrigger = radioInput.read(6) <= 1250;
+  bool cannonTrigger = radioCannonInput.read(6) <= 1250;
 
 
   //Adjust angle and manage PIDs
   //TODO
-
+  MiniPID pid=MiniPID(1,0,0);//needs to get actual values.
+  //set any other PID configuration options here. 
+  elevationSwitch.update();
+  depressionSwitch.update();
+ 
+  while(true){
+    //sensor is current position recieved from the mag encoder
+    //target is where the controller is set to. 
+    float target = radioCannonInput.read(3);// we might need to change the range on this
+    double output=pid.getOutput(sensor,target);
+    if (elevationSwitch.read() == false || depressionSwitch.read() == false){
+      output = 127;
+      //this is not right because of gravity. 
+    }
+    analogWrite(ELEVATION_MOTOR_PIN,output);
+  delay(10);
+}
   run_state_machine(cannonTrigger);
 }
 
@@ -50,7 +88,7 @@ void loop(){
 // up/down window motor, heavy reduction
 // has absolute position sensor mag encoder
 // limit on up and down
-
+  
 // indexing revolver, 8 barrels
 // pins for hard stop
 // hopefully limit switch
@@ -88,9 +126,9 @@ enum State{
   RELOAD_LOCKED,
   RESET
 }
-ElapsedMillis timer;
+
 State state = State.STARTUP;
-State last_state=Stat.RESET;
+State last_state=State.RESET;
 void run_state_machine(bool cannonTrigger){
 
   indexSwitch.update();
@@ -190,13 +228,17 @@ void run_state_machine(bool cannonTrigger){
       //dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
       //if switch is tripped. Fallback safety timer.
+      indexSwitch.update();
       if(indexSwitch.read()==false || timer>3000){
         state=PRESSURIZING;
       }
+    break;
+    default:
+      //things got wacky
+      state=STARTUP;
+    break;
   }
-  default:
-    //things got wack
-    state=STARTUP
+ 
 
   if (last_state != state){
     timer=0;
