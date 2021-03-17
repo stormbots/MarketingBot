@@ -17,9 +17,19 @@
 #include <FastLED.h>
 #include <OctoWS2811.h>
 
-#define VERSION 20275
+const int ledsPerStrip = 64;
 
-#define DISPLAY_TEST  /* define to show test patterns at startup */
+DMAMEM int displayMemory[ledsPerStrip*6];
+int drawingMemory[ledsPerStrip*6];
+
+const int config = WS2811_GRB | WS2811_800kHz;
+
+
+OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
+
+//#define VERSION 20275
+
+//#define DISPLAY_TEST  /* define to show test patterns at startup */
 
 /* MATRIX CONFIGURATION -- PLEASE SEE THE README (GITHUB LINK ABOVE) */
 
@@ -250,16 +260,16 @@ void make_fire() {
   for ( i=0; i<rows; ++i ) {
     for ( j=0; j<cols; ++j ) {
       matrix[pos(j,i)] = colors[pix[i][j]];
+      leds.setPixel(pos(j,i), colors[pix[i][j]]);
+      
     }
   }
-  FastLED.show();
+  leds.show();
 }
 
 void setup() {
-  FastLED.addLeds<MAT_TYPE, MAT_PIN>(matrix, MAT_W * MAT_H);
-  FastLED.setBrightness(BRIGHT);
-  FastLED.clear();
-  FastLED.show();
+  leds.begin();
+  leds.show();
 
   for ( uint16_t i=0; i<rows; ++i ) {
     for ( uint16_t j=0; j<cols; ++j ) {
@@ -307,8 +317,10 @@ void setup() {
   FastLED.show();
   delay(2000);
 #endif
-  FastLED.clear();
-  FastLED.show();
+  for(int i = 0; i < MAT_H * PANELS_H * MAT_W * PANELS_W; i++){
+    leds.setPixel(i, 0x000000);
+  }
+  leds.show();
 }
 
 void loop() {
