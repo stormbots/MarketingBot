@@ -81,19 +81,24 @@ void loop(){
 
   
   double output=pid.getOutput(sensor,target);
-  //TODO: This switch handling is incorrect
-  if (elevationSwitch.fallingEdge() == false || depressionSwitch.fallingEdge() == false){
-   output = - output;
-  }
-  if (elevationSwitch.risingEdge() == false || depressionSwitch.risingEdge() == false){
-    //this should avoid oscillation by delaying the turn back towards the boundary
-    verticalDriveTimer = 0;
-    if (verticalDriveTimer == 100){
-       output = - output; 
+ 
+  if (elevationSwitch.read() == false){
+    // we might need to flip the less than/greater than depending on hardware
+    //clamp isn't a thing in c++
+    if (output > 127){
+      output = 127;
     }
    
   }
-  //this is not right because of gravity. 
+  else if(depressionSwitch.read() == false){
+    // we might need to flip the less than/greater than depending on hardware
+    if (output < 127){
+      output = 127;
+    }
+    
+  }
+  
+
   analogWrite(ELEVATION_MOTOR_PIN,output);
   delay(10);
   run_state_machine(cannonTrigger);
