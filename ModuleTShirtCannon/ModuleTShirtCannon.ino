@@ -17,8 +17,8 @@
 #define INDEX_LOCK_A_PIN 2
 #define INDEX_LOCK_B_PIN 2
 
-#define CYLINDER_CLAMP_A_PIN 3
-#define CYLINDER_CLAMP_B_PIN 3
+#define FIRING_PLATE_A_PIN 3
+#define FIRING_PLATE_B_PIN 3
 
 #define ELEVATION_MOTOR_PIN 3
 
@@ -112,10 +112,10 @@ void loop(){
   analogWrite(ELEVATION_MOTOR_PIN,angleMotorOutput);
 
 
-
   /*****************************************/
   /********* Process State Machine *********/
   /****************************************/
+  //Manages solenoids, simple switches, simple motors
   run_state_machine(cannonTrigger);
   
   delay(10);
@@ -145,7 +145,7 @@ void run_state_machine(bool cannonTrigger){
       //motor on???
       analogWrite(REVOLVER_MOTOR_PIN,127+32);
       // open clamps
-      digitalWrite(CYLINDER_CLAMP_A_PIN,true);
+      digitalWrite(FIRING_PLATE_A_PIN,true);
       //switch to pressurizing when it is ready to fire/ indexswitch is activated
       indexSwitch.update();
       if (indexSwitch.read()== false){
@@ -158,7 +158,7 @@ void run_state_machine(bool cannonTrigger){
       //motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //cylinder clamps open
-      digitalWrite(CYLINDER_CLAMP_A_PIN,true);
+      digitalWrite(FIRING_PLATE_A_PIN,true);
       //dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
       //Make sure we've waited long enough to pressurize,
@@ -173,7 +173,7 @@ void run_state_machine(bool cannonTrigger){
       //motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //cylinder clamps closed
-      digitalWrite(CYLINDER_CLAMP_A_PIN,false);
+      digitalWrite(FIRING_PLATE_A_PIN,false);
       //dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
       // if the trigger switch if flicked progress to firing
@@ -187,7 +187,7 @@ void run_state_machine(bool cannonTrigger){
       //motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //cylinder clamps closed
-      digitalWrite(CYLINDER_CLAMP_A_PIN,false);
+      digitalWrite(FIRING_PLATE_A_PIN,false);
       //dump valve open
       digitalWrite(DUMP_VALVE_A_PIN,true);
       // if the timer is up for firing and the switch is flicked back to avoid accidents advance to recovery
@@ -201,7 +201,7 @@ void run_state_machine(bool cannonTrigger){
       // motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //cylinder clamps open
-      digitalWrite(CYLINDER_CLAMP_A_PIN,true);
+      digitalWrite(FIRING_PLATE_A_PIN,true);
       // dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
       // if timer expires advance, value is placeholder
@@ -215,7 +215,7 @@ void run_state_machine(bool cannonTrigger){
       //motor on 
       analogWrite(REVOLVER_MOTOR_PIN,127+32);//placeholder value 1/8 speed
       //cylinder clamps open
-      digitalWrite(CYLINDER_CLAMP_A_PIN,true);
+      digitalWrite(FIRING_PLATE_A_PIN,true);
       //dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
       // if timer expires advance, value is placeholder
@@ -229,7 +229,7 @@ void run_state_machine(bool cannonTrigger){
       //motor on
       analogWrite(REVOLVER_MOTOR_PIN,127+32);//placeholder value 1/8 speed
       //cylinder clamps open
-      digitalWrite(CYLINDER_CLAMP_A_PIN,true);
+      digitalWrite(FIRING_PLATE_A_PIN,true);
       //dump valve closed
       digitalWrite(DUMP_VALVE_A_PIN,false);
       //if switch is tripped. Fallback safety timer.
