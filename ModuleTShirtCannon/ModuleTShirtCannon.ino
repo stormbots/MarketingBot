@@ -3,6 +3,7 @@
 #include <elapsedMillis.h>
 #include <PulsePosition.h>
 #include <Bounce.h>
+#include <Encoder.h>
 
 /* Hardware: */
 #define REVOLVER_MOTOR_PIN 1
@@ -23,22 +24,31 @@
 
 #define INDEX_LOCK_PIN 3
 
-#define ELEVATION_SWITCH_PIN 3
-#define DEPRESSION_SWITCH_PIN 3
+#define ANGLE_TOP_SWITCH_PIN 3
+#define ANGLE_BOTTON_SWITCH_PIN 3
 
 #define BUILT_IN_LED 13
 
 #define RADIO_IN_PIN 22
 #define RADIO_OUT_PIN 23
+
+#define ANGLE_ENCODER_A_PIN 4
+#define ANGLE_ENCODER_B_PIN 4
+//Degrees measured from horizon
+#define ANGLE_MIN_DEGREES 0
+#define ANGLE_MAX_DEGREES 90
+#define ANGLE_ENCODER_RANGE 4096
+
 PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
 
 Bounce indexSwitch = Bounce(INDEX_LOCK_PIN,10);
 MiniPID pid = MiniPID(1.0,0.0,0.0);
 
+Encoder angleEncoder(pin1, pin2);
 
-Bounce elevationSwitch = Bounce(ELEVATION_SWITCH_PIN ,10);
-Bounce depressionSwitch = Bounce(DEPRESSION_SWITCH_PIN,10);
+Bounce angleTopSwitch = Bounce(ELEVATION_SWITCH_PIN ,10);
+Bounce angleBottomSwitch = Bounce(DEPRESSION_SWITCH_PIN,10);
 elapsedMillis verticalDriveTimer;
 elapsedMillis timer;
 elapsedMillis cannonHeartbeat;
@@ -46,7 +56,16 @@ void setup(){
   pinMode(BUILT_IN_LED, OUTPUT);
   radioCannonOutput.begin(RADIO_OUT_PIN);
   radioCannonInput.begin(RADIO_IN_PIN);
-  
+
+  //Configure angle PID
+  pid.setOutputLimits(-127,127);
+  pid.setMaxIOutput(20);
+	// pid.setSetpointRange(double angle per cycle)
+
+  //wait to make sure our sensors are online before initializing
+  delay(30); 
+  //TODO: read sensor pulses and set position from Absolute encoder reading
+
 }
 
 
@@ -57,69 +76,50 @@ void loop(){
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
 
+  /*********************************************/
   /** Read input signals and parse them out */
+  /*********************************************/
   //TODO: Read radio inputs
   //TODO: Read safety signals somehow
   bool cannonTrigger = radioCannonInput.read(6) <= 1250;
-  double target = radioCannonInput.read(3);
+  double targetAngle = radioCannonInput.read(3);
+  targetAngle = clamp(targetAngle,1000,2000);
+  targetAngle = map(targetAngle,1000,2000,ANGLE_MIN_DEGREES,ANGLE_MAX_DEGREES);
 
-   
-  /* Process Cannon Angle Stuff */
-  double sensor = 0; //TODO: Read properly from mag encoder
-  elevationSwitch.update();
-  depressionSwitch.update();
-  double output=pid.getOutput(sensor,target);
- 
-  if (elevationSwitch.read() == false){
-    if (output > 127){
-      output = 127;
-    }
-  }
-  else if(depressionSwitch.read() == false){
-    if (output < 127){
-      output = 127;
-    }
-  }
   
+  /*********************************************/
+  /********* Process Cannon Elevation  *********/
+  /*********************************************/
+  double sensorAngle = angleEncoder.read(); //TODO: Read properly from mag encoder
+  sensorAngle = map(sensorAngle,0,ANGLE_ENCODER_RANGE,ANGLE_MIN_DEGREES,ANGLE_MAX_DEGREES);
+  angleTopSwitch.update();
+  angleBottomSwitch.update();
+  //NOTE: PID returns +/- range, so offset by motor neutral
+  double angleMotorOutput=127+pid.getOutput(sensorAngle,targetAngle);
+ 
+  if (angleTopSwitch.read() == false){
+    angleEncoder.write(ANGLE_ENCODER_RANGE);
+    if (angleMotorOutput > 127){
+      angleMotorOutput = 127;
+    }
+  }
+  else if(angleBottomSwitch.read() == false){
+    angleEncoder.write(0);
+    if (angleMotorOutput < 127){
+      angleMotorOutput = 127;
+    }
+  }
+  analogWrite(ELEVATION_MOTOR_PIN,angleMotorOutput);
 
-  analogWrite(ELEVATION_MOTOR_PIN,output);
+
+
+  /*****************************************/
+  /********* Process State Machine *********/
+  /****************************************/
   run_state_machine(cannonTrigger);
   
   delay(10);
 }
-
-// hardware:
-
-// up/down window motor, heavy reduction
-// has absolute position sensor mag encoder
-// limit on up and down
-  
-// indexing revolver, 8 barrels
-// pins for hard stop
-// hopefully limit switch
-
-// pressure regulated by humans, and only decreases
-
-
-/**
-  assume indexed and firing
-
-  engage cylinderClamp
-  wait for pressure (timer probably)
-  open pressureChamber pressure (if it's sufficiently pressurized)
-  wait for pressureChamber to empty (timer again)
-  seal pressureChamber (rebuild pressure, background)
-  disengage cylinderClamp (some wait time)
-  release indexLock (wait some time)
-  start revolver
-  (wait some time to clear lock)
-  engage indexLock
-  wait for indexSwitch || max runtime exceeded
-
-
-*/
-
-
 
 enum State{
   STARTUP,
