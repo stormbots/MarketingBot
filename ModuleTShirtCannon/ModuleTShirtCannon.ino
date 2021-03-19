@@ -57,52 +57,35 @@ void loop(){
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
 
+  /** Read input signals and parse them out */
   //TODO: Read radio inputs
   //TODO: Read safety signals somehow
-   
-  /* Process */
   bool cannonTrigger = radioCannonInput.read(6) <= 1250;
+  double target = radioCannonInput.read(3);
 
-
-  //Adjust angle and manage PIDs
-  //TODO
-  //set any other PID configuration options here. 
+   
+  /* Process Cannon Angle Stuff */
+  double sensor = 0; //TODO: Read properly from mag encoder
   elevationSwitch.update();
   depressionSwitch.update();
-
- double sensor = 0; //temp variable
-  //sensor is current position recieved from the mag encoder
-  
-  //target is where the controller is set to. 
-  double target = radioCannonInput.read(3);// we might need to change the range on this
-  
-  
- 
-
-  
   double output=pid.getOutput(sensor,target);
  
   if (elevationSwitch.read() == false){
-    // we might need to flip the less than/greater than depending on hardware
-    //clamp isn't a thing in c++
     if (output > 127){
       output = 127;
     }
-   
   }
   else if(depressionSwitch.read() == false){
-    // we might need to flip the less than/greater than depending on hardware
     if (output < 127){
       output = 127;
     }
-    
   }
   
 
   analogWrite(ELEVATION_MOTOR_PIN,output);
-  delay(10);
   run_state_machine(cannonTrigger);
   
+  delay(10);
 }
 
 // hardware:
