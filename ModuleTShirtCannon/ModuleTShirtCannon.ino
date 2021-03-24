@@ -25,7 +25,7 @@
 #define INDEX_LOCK_PIN 3
 
 #define ANGLE_TOP_SWITCH_PIN 3
-#define ANGLE_BOTTON_SWITCH_PIN 3
+#define ANGLE_BOTTOM_SWITCH_PIN 3
 
 #define BUILT_IN_LED 13
 
@@ -45,10 +45,10 @@ PulsePositionInput radioCannonInput;
 Bounce indexSwitch = Bounce(INDEX_LOCK_PIN,10);
 MiniPID pid = MiniPID(1.0,0.0,0.0);
 
-Encoder angleEncoder(pin1, pin2);
+Encoder angleEncoder(ANGLE_ENCODER_A_PIN, ANGLE_ENCODER_B_PIN);
 
-Bounce angleTopSwitch = Bounce(ELEVATION_SWITCH_PIN ,10);
-Bounce angleBottomSwitch = Bounce(DEPRESSION_SWITCH_PIN,10);
+Bounce angleTopSwitch = Bounce(ANGLE_TOP_SWITCH_PIN ,10);
+Bounce angleBottomSwitch = Bounce(ANGLE_BOTTOM_SWITCH_PIN,10);
 elapsedMillis verticalDriveTimer;
 elapsedMillis timer;
 elapsedMillis cannonHeartbeat;
@@ -81,9 +81,11 @@ void loop(){
   /*********************************************/
   //TODO: Read radio inputs
   //TODO: Read safety signals somehow
+    
+
   bool cannonTrigger = radioCannonInput.read(6) <= 1250;
   double targetAngle = radioCannonInput.read(3);
-  targetAngle = clamp(targetAngle,1000,2000);
+  
   targetAngle = map(targetAngle,1000,2000,ANGLE_MIN_DEGREES,ANGLE_MAX_DEGREES);
 
   
