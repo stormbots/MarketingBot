@@ -63,8 +63,7 @@ void setup() {
   radioOutput.begin(RADIO_OUT_PIN);
   radioInput.begin(RADIO_IN_PIN);
 
-  light_setup();
-  cannon_setup();
+
   pinMode(13,OUTPUT);
 }
 
@@ -131,9 +130,8 @@ void loop() {
   analogWrite(MOTOR_RIGHT_2_PIN,rightMotorSpeed);
   analogWrite(MOTOR_RIGHT_3_PIN,rightMotorSpeed);
   
-  /* Run LED strips */
-  light_loop();
-  cannon_loop();
+
+ 
 
   /* Check our system heartbeat */
   if(heartbeat > 1000){
