@@ -65,6 +65,7 @@ void setup() {
 
 
   pinMode(13,OUTPUT);
+  light_setup();
 }
 
 void loop() {
@@ -130,8 +131,8 @@ void loop() {
   analogWrite(MOTOR_RIGHT_2_PIN,rightMotorSpeed);
   analogWrite(MOTOR_RIGHT_3_PIN,rightMotorSpeed);
   
-
- 
+  /* Run LED strips */
+  light_loop();
 
   /* Check our system heartbeat */
   if(heartbeat > 1000){
