@@ -46,7 +46,7 @@ OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 #define MAT_LEFT            /* define if matrix 0,0 is on left edge of display; undef if right */
 #define MAT_ZIGZAG          /* define if matrix zig-zags ---> <--- ---> <---; undef if scanning ---> ---> ---> */
 
-#define BRIGHT 64           /* brightness; min 0 - 255 max -- high brightness requires a hefty power supply! Start low! */
+#define BRIGHT 24           /* brightness; min 0 - 255 max -- high brightness requires a hefty power supply! Start low! */
 #define FPS 15              /* Refresh rate */
 
 /* MULTI-PANEL CONFIGURATION -- Do not change unless you connect multiple panels -- See README.md */
@@ -260,7 +260,17 @@ void make_fire() {
   for ( i=0; i<rows; ++i ) {
     for ( j=0; j<cols; ++j ) {
       matrix[pos(j,i)] = colors[pix[i][j]];
-      leds.setPixel(pos(j,i), colors[pix[i][j]]);
+      int rgb = colors[pix[i][j]];
+      int r = rgb >> 16 & 0xff;
+      int g = rgb >> 8 & 0xff;
+      int b = rgb & 0xff;
+      r = map(r, 0, 255, 0, BRIGHT);
+      g = map(g, 0, 255, 0, BRIGHT);
+      b = map(b, 0, 255, 0, BRIGHT);
+      int color = r;
+      color = color<<8 | g;
+      color = color<<8 | b;
+      leds.setPixel(pos(j,i), color);
       
     }
   }
