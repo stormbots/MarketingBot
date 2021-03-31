@@ -1,4 +1,3 @@
-
 #include <PulsePosition.h>
 #include <Servo.h>
 #include <elapsedMillis.h>
@@ -43,33 +42,28 @@
 #define MOTOR_RIGHT_2_PIN 3
 #define MOTOR_RIGHT_3_PIN 4
 
-
 PulsePositionOutput radioOutput;
 PulsePositionInput radioInput;
 /*****************************************/
-
 //TODO: Make controller sketch
-
-
-
 /*****************************************/
+
 #define BUILT_IN_LED 13
+
 elapsedMillis heartbeat;
 
-
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
+  
   radioOutput.begin(RADIO_OUT_PIN);
   radioInput.begin(RADIO_IN_PIN);
 
-
   pinMode(13,OUTPUT);
+  
   light_setup();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   float leftMotorSpeed = 1500;
   float rightMotorSpeed = 1500;
 
@@ -81,8 +75,7 @@ void loop() {
   // float ??? = radioInput.read(6);
   // float ??? = radioInput.read(7);
   // float ??? = radioInput.read(8);
-  // float ??? = radioInput.read(3);
-   
+
   throttleValue = constrain(throttleValue,1000,2000);
   turningValue = constrain(turningValue,1000,2000);
   chassisPowerValue = constrain(chassisPowerValue,1000,2000);
@@ -94,36 +87,38 @@ void loop() {
     turningValue = 1500;
   }
   else if(chassisPowerValue <= 1750){
-  //Slow Mode
+    //Half speed
     throttleValue = map(throttleValue, 1000,2000,1250,1750);
     turningValue = map(turningValue, 1000,2000,1250,1750);
   }
  
-  /** Copy our input controls out to the module */
-  //NOTE: PulsePosition allows 8, even if our controller doesn't
+  /** Copy our radio signals out to the current module */
   for(int i=1;i<=8; i++){
     radioOutput.write(i,radioInput.read(i));
   }
-  //Write out throttle values, as these may be modified
+  //Write out throttle values, as these may be modified by Chassis
   radioOutput.write(2,throttleValue);
   radioOutput.write(4,turningValue);
 
   /** Generate arcade drive left/right outputs */
   turningValue = map(turningValue,1000,2000,-2000,2000);
+  
   leftMotorSpeed= throttleValue + turningValue;
   rightMotorSpeed = throttleValue - turningValue; 
   {
     //convert our ranges
     float vLeft  = map(leftMotorSpeed,1000,2000,-1,1);
     float vRight = map(rightMotorSpeed,1000,2000,-1,1);
+    
     float vMax = abs(max(vLeft,vRight));
+    
     if(vMax > 1){
       leftMotorSpeed =  map(vLeft/vMax,-1,1,1000,2000);
       rightMotorSpeed =  map(vRight/vMax,-1,1,1000,2000);
     }
   }
  
-  /* operate drive base */
+  /* Write to Motors */
   analogWrite(MOTOR_LEFT_1_PIN,leftMotorSpeed);
   analogWrite(MOTOR_LEFT_2_PIN,leftMotorSpeed);
   analogWrite(MOTOR_LEFT_3_PIN,leftMotorSpeed);
