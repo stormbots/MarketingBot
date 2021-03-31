@@ -42,6 +42,14 @@
 #define MOTOR_RIGHT_2_PIN 3
 #define MOTOR_RIGHT_3_PIN 4
 
+#define HIGH_GEAR true
+#define LOW_GEAR(!HIGH_GEAR)
+
+#define LIGHT_RELAY_PIN 3
+
+
+#define SHIFTER_PIN 3
+
 PulsePositionOutput radioOutput;
 PulsePositionInput radioInput;
 /*****************************************/
@@ -59,7 +67,7 @@ void setup() {
   radioInput.begin(RADIO_IN_PIN);
 
   pinMode(13,OUTPUT);
-  
+  digitalWrite(SHIFTER_PIN, LOW_GEAR);
   light_setup();
 }
 
