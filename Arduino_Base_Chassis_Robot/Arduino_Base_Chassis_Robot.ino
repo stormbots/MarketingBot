@@ -60,9 +60,10 @@ void setup() {
   
   radioOutput.begin(RADIO_OUT_PIN);
   radioInput.begin(RADIO_IN_PIN);
-
+  pinMode(LIGHT_RELAY_PIN,OUTPUT);
   pinMode(13,OUTPUT);
   digitalWrite(SHIFTER_PIN, LOW_GEAR);
+
   light_setup();
 }
 
@@ -74,15 +75,16 @@ void loop() {
   float throttleValue = radioInput.read(2);
   // float ??? = radioInput.read(3);
   float turningValue= radioInput.read(4); 
-  float chassisPowerValue = radioInput.read(5);
-  // float ??? = radioInput.read(6);
+   // float ??? = radioInput.read(5);
+  float chassisEnable= radioInput.read(8);
+  float lightSetting =radioInput.read(6);
   // float ??? = radioInput.read(7);
-  // float ??? = radioInput.read(8);
+  float chassisEnable= radioInput.read(8);
 
   throttleValue = constrain(throttleValue,1000,2000);
   turningValue = constrain(turningValue,1000,2000);
   chassisPowerValue = constrain(chassisPowerValue,1000,2000);
-  
+  lightSettingValue = constrain(lightSettingValue,1000,2000);
   /** Handle Low-power and disable switch */
   if (chassisPowerValue <=1250){
     //Disable drivetrain
@@ -126,7 +128,16 @@ void loop() {
   analogWrite(MOTOR_RIGHT_PIN,rightMotorSpeed);
   
   /* Run LED strips */
-  light_loop();
+  //Disable leds to reduce power draw
+  if (radioInput.read(6) < 1125){
+    //turns off leds
+    digitalWrite(LIGHT_RELAY_PIN,LOW;
+  }
+  else{
+    //turns leds on
+    digitalWrite(LIGHT_RELAY_PIN,HIGH;
+  }
+  light_loop(lightSettingValue);
 
   /* Check our system heartbeat */
   if(heartbeat > 1000){
