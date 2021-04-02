@@ -75,10 +75,11 @@ void loop() {
   float throttleValue = radioInput.read(2);
   // float ??? = radioInput.read(3);
   float turningValue= radioInput.read(4); 
-  float chassisPowerValue = radioInput.read(5);
-  float lightSettingValue =radioInput.read(6);
+   // float ??? = radioInput.read(5);
+  float chassisEnable= radioInput.read(8);
+  float lightSetting =radioInput.read(6);
   // float ??? = radioInput.read(7);
-  // float ??? = radioInput.read(8);
+  float chassisEnable= radioInput.read(8);
 
   throttleValue = constrain(throttleValue,1000,2000);
   turningValue = constrain(turningValue,1000,2000);
