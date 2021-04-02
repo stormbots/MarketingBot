@@ -39,7 +39,7 @@
 #define MOTOR_RIGHT_PIN 9
 
 #define HIGH_GEAR true
-#define LOW_GEAR(!HIGH_GEAR)
+#define LOW_GEAR (!HIGH_GEAR)
 
 #define LIGHT_RELAY_PIN 4
 
@@ -76,22 +76,22 @@ void loop() {
   // float ??? = radioInput.read(3);
   float turningValue= radioInput.read(4); 
    // float ??? = radioInput.read(5);
-  float chassisEnable= radioInput.read(8);
   float lightSetting =radioInput.read(6);
   // float ??? = radioInput.read(7);
   float chassisEnable= radioInput.read(8);
 
   throttleValue = constrain(throttleValue,1000,2000);
   turningValue = constrain(turningValue,1000,2000);
-  chassisPowerValue = constrain(chassisPowerValue,1000,2000);
-  lightSettingValue = constrain(lightSettingValue,1000,2000);
+  chassisEnable = constrain(chassisEnable,1000,2000);
+  lightSetting = constrain(lightSetting,1000,2000);
+
   /** Handle Low-power and disable switch */
-  if (chassisPowerValue <=1250){
+  if (chassisEnable <=1250){
     //Disable drivetrain
     throttleValue = 1500;
     turningValue = 1500;
   }
-  else if(chassisPowerValue <= 1750){
+  else if(chassisEnable <= 1750){
     //Half speed
     throttleValue = map(throttleValue, 1000,2000,1250,1750);
     turningValue = map(turningValue, 1000,2000,1250,1750);
@@ -131,13 +131,13 @@ void loop() {
   //Disable leds to reduce power draw
   if (radioInput.read(6) < 1125){
     //turns off leds
-    digitalWrite(LIGHT_RELAY_PIN,LOW;
+    digitalWrite(LIGHT_RELAY_PIN,LOW);
   }
   else{
     //turns leds on
-    digitalWrite(LIGHT_RELAY_PIN,HIGH;
+    digitalWrite(LIGHT_RELAY_PIN,HIGH);
   }
-  light_loop(lightSettingValue);
+  light_loop(lightSetting);
 
   /* Check our system heartbeat */
   if(heartbeat > 1000){
