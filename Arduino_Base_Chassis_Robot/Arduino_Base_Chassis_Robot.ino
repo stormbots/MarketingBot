@@ -35,18 +35,13 @@
 #define RADIO_IN_PIN 22
 #define RADIO_OUT_PIN 23
 
-#define MOTOR_LEFT_1_PIN 9
-#define MOTOR_LEFT_2_PIN 9
-#define MOTOR_LEFT_3_PIN 10
-#define MOTOR_RIGHT_1_PIN 3
-#define MOTOR_RIGHT_2_PIN 3
-#define MOTOR_RIGHT_3_PIN 4
+#define MOTOR_LEFT_PIN 10
+#define MOTOR_RIGHT_PIN 9
 
 #define HIGH_GEAR true
 #define LOW_GEAR(!HIGH_GEAR)
 
-#define LIGHT_RELAY_PIN 3
-
+#define LIGHT_RELAY_PIN 4
 
 #define SHIFTER_PIN 3
 
@@ -127,12 +122,8 @@ void loop() {
   }
  
   /* Write to Motors */
-  analogWrite(MOTOR_LEFT_1_PIN,leftMotorSpeed);
-  analogWrite(MOTOR_LEFT_2_PIN,leftMotorSpeed);
-  analogWrite(MOTOR_LEFT_3_PIN,leftMotorSpeed);
-  analogWrite(MOTOR_RIGHT_1_PIN,rightMotorSpeed);
-  analogWrite(MOTOR_RIGHT_2_PIN,rightMotorSpeed);
-  analogWrite(MOTOR_RIGHT_3_PIN,rightMotorSpeed);
+  analogWrite(MOTOR_LEFT_PIN,leftMotorSpeed);
+  analogWrite(MOTOR_RIGHT_PIN,rightMotorSpeed);
   
   /* Run LED strips */
   light_loop();
