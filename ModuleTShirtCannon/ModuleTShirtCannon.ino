@@ -6,31 +6,31 @@
 #include <Encoder.h>
 
 /* Hardware: */
-#define REVOLVER_MOTOR_PIN 1
+#define REVOLVER_MOTOR_PIN 10
 
-#define MAG_ENCODER_A_PIN 1
-#define MAG_ENCODER_B_PIN 2
+#define DUMP_VALVE_A_PIN 16
 
-#define DUMP_VALVE_A_PIN 2
+#define INDEX_LOCK_A_PIN 18
 
-#define INDEX_LOCK_A_PIN 2
+#define FIRING_PLATE_A_PIN 17
 
-#define FIRING_PLATE_A_PIN 3
+#define ELEVATION_MOTOR_PIN 9
 
-#define ELEVATION_MOTOR_PIN 3
+#define TERM_AUX_1 19
+#define TERM_AUX_2 20
+#define TERM_AUX_3 21
 
-#define INDEX_LOCK_PIN 3
-
-#define ANGLE_TOP_SWITCH_PIN 3
-#define ANGLE_BOTTOM_SWITCH_PIN 3
+#define ANGLE_TOP_SWITCH_PIN 5
+#define ANGLE_BOTTOM_SWITCH_PIN 6
 
 #define BUILT_IN_LED 13
 
-#define RADIO_IN_PIN 22
-#define RADIO_OUT_PIN 23
+#define RADIO_IN_PIN 23
+#define RADIO_OUT_PIN 22
 
-#define ANGLE_ENCODER_A_PIN 4
-#define ANGLE_ENCODER_B_PIN 4
+#define ANGLE_ENCODER_A_PIN 0
+#define ANGLE_ENCODER_B_PIN 15
+#define ANGLE_ENCODER_ABSOLUTE_PIN 1
 
 //Degrees measured from horizon
 #define ANGLE_MIN_DEGREES 0
@@ -45,7 +45,7 @@ MiniPID pid = MiniPID(1.0,0.0,0.0);
 
 Encoder angleEncoder(ANGLE_ENCODER_A_PIN, ANGLE_ENCODER_B_PIN);
 
-Bounce indexSwitch = Bounce(INDEX_LOCK_PIN,10);
+Bounce indexSwitch = Bounce(INDEX_LOCK_A_PIN,10);
 Bounce angleTopSwitch = Bounce(ANGLE_TOP_SWITCH_PIN ,10);
 Bounce angleBottomSwitch = Bounce(ANGLE_BOTTOM_SWITCH_PIN,10);
 
