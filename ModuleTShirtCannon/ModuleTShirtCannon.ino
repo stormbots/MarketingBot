@@ -61,6 +61,7 @@ Bounce angleBottomSwitch = Bounce(ANGLE_BOTTOM_SWITCH_PIN,10);
 elapsedMillis verticalDriveTimer;
 elapsedMillis timer;
 elapsedMillis cannonHeartbeat;
+bool has_been_enabled = false;
 
 void setup(){
   pinMode(BUILT_IN_LED, OUTPUT);
@@ -85,6 +86,16 @@ void loop(){
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
 
+  // //DEBUG// Hard coded values to determine actuator polarity
+  // digitalWrite(REVOLVER_MOTOR_PIN,true);
+  // digitalWrite(INDEX_LOCK_PIN,true);
+  // analogWrite(REVOLVER_MOTOR_PIN,127+32);
+  // digitalWrite(FIRING_PLATE_PIN,true);
+  // digitalWrite(DUMP_VALVE_PIN,true);
+  //return; //Use when debugging to prevent other actuator changes
+
+
+
   /*********************************************/
   /** Read input signals and parse them out */
   /*********************************************/
@@ -97,7 +108,14 @@ void loop(){
   
   targetAngle = map(targetAngle,1000,2000,ANGLE_MIN_DEGREES,ANGLE_MAX_DEGREES);
 
-  
+  //
+  //TODO: Do not run actuators until we've enabled the robot at least once
+  //
+  //This section relies on a more robust Disable muxing on the
+  //reciever
+  //if(!has_been_enabled)return;
+
+
   /*********************************************/
   /********* Process Cannon Elevation  *********/
   /*********************************************/
