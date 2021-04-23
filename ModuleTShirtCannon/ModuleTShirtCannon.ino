@@ -35,8 +35,17 @@
 //Degrees measured from horizon
 #define ANGLE_MIN_DEGREES 0
 #define ANGLE_MAX_DEGREES 90
-
 #define ANGLE_ENCODER_RANGE 4096
+
+// Named values for actuators
+#define INDEX_LOCKED true
+#define INDEX_UNLOCKED false
+#define DUMP_VALVE_OPEN true
+#define DUMP_VALVE_CLOSED false
+#define FIRING_PLATE_OPEN true
+#define FIRING_PLATE_CLOSED false
+#define INDEX_SWITCHED_PRESSED false
+
 
 PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
@@ -66,7 +75,6 @@ void setup(){
   //wait to make sure our sensors are online before initializing
   delay(30); 
   //TODO: read sensor pulses and set position from Absolute encoder reading
-
 }
 
 
@@ -143,28 +151,28 @@ void run_state_machine(bool cannonTrigger){
   switch(state){
     case STARTUP:
       //index locked
-      digitalWrite(INDEX_LOCK_PIN,true);
+      digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor on
       analogWrite(REVOLVER_MOTOR_PIN,127+32);
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,true);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
-      digitalWrite(DUMP_VALVE_PIN,false);
+      digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       //if the indexSwitch is tripped move to PRESSURIZING
       indexSwitch.update();
-      if (indexSwitch.read()== false){
+      if (indexSwitch.read() == INDEX_SWITCHED_PRESSED){
         state=PRESSURIZING;
       }
     break;
     case PRESSURIZING:
       //index locked
-      digitalWrite(INDEX_LOCK_PIN,true);
+      digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,true);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
-      digitalWrite(DUMP_VALVE_PIN,false);
+      digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       //if the trigger for the cannon is not pressed and the timer has expired move to IDLE
       if (cannonTrigger == false && timer>3000){
         state=IDLE;
@@ -172,13 +180,13 @@ void run_state_machine(bool cannonTrigger){
     break;
     case IDLE:
       //index locked
-      digitalWrite(INDEX_LOCK_PIN,true);
+      digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //firing plate closed
-      digitalWrite(FIRING_PLATE_PIN,false);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve closed
-      digitalWrite(DUMP_VALVE_PIN,false);
+      digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       // if the trigger for the cannon is pressed move to FIRING
       if (cannonTrigger){
         state = FIRING;
@@ -186,13 +194,13 @@ void run_state_machine(bool cannonTrigger){
     break;
     case FIRING:
       //index locked
-      digitalWrite(INDEX_LOCK_PIN,true);
+      digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //firing plate closed
-      digitalWrite(FIRING_PLATE_PIN,false);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve open
-      digitalWrite(DUMP_VALVE_PIN,true);
+      digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_OPEN);
       // if the timer expires advance to RECOVERY
       if (timer > 3000){
         state = RECOVERY;
@@ -200,13 +208,13 @@ void run_state_machine(bool cannonTrigger){
     break;
     case RECOVERY:
       // index unlocked
-      digitalWrite(INDEX_LOCK_PIN,false);
+      digitalWrite(INDEX_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor off
       analogWrite(REVOLVER_MOTOR_PIN,127);
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,true);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       // dump valve closed
-      digitalWrite(DUMP_VALVE_PIN,false);
+      digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       // if timer expires advance to RELOAD_UNLOCKED
       if (timer > 3000){
         state=RELOAD_UNLOCKED;
@@ -214,13 +222,13 @@ void run_state_machine(bool cannonTrigger){
     break;
     case RELOAD_UNLOCKED:
       //index unlocked
-      digitalWrite(INDEX_LOCK_PIN,false);
+      digitalWrite(INDEX_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor on
       analogWrite(REVOLVER_MOTOR_PIN,127+32);//placeholder value 1/8 speed
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,true);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
-      digitalWrite(DUMP_VALVE_PIN,false);
+      digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       // if timer expires advance to RELOAD_LOCKED
       if (timer > 3000){
         state=RELOAD_LOCKED;
@@ -228,16 +236,16 @@ void run_state_machine(bool cannonTrigger){
     break;
     case RELOAD_LOCKED:
       //index locked
-      digitalWrite(INDEX_LOCK_PIN,true);
+      digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor on
       analogWrite(REVOLVER_MOTOR_PIN,127+32);//placeholder value 1/8 speed
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,true);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
-      digitalWrite(DUMP_VALVE_PIN,false);
+      digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
       indexSwitch.update();
-      if(indexSwitch.read()==false || timer>3000){
+      if(indexSwitch.read()==INDEX_SWITCHED_PRESSED || timer>3000){
         state=PRESSURIZING;
       }
     break;
