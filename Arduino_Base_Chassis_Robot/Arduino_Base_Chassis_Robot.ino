@@ -1,5 +1,4 @@
 #include <PulsePosition.h>
-#include <Servo.h>
 #include <elapsedMillis.h>
 
 //LED Pins
