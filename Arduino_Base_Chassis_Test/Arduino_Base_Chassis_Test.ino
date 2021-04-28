@@ -1,6 +1,6 @@
 #include <PulsePosition.h>
 #include <Servo.h>
-#include <Motor.h>
+
 Servo leftMotorServo;
 Servo rightMotorServo;
 PulsePositionOutput myOut;
