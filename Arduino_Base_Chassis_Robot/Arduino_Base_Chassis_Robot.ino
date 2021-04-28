@@ -137,8 +137,10 @@ void loop() {
   /* Write to Motors */
   motorLeft.writeMicroseconds(leftMotorSpeed);
   motorRight.writeMicroseconds(rightMotorSpeed);
-  Serial.println(leftMotorSpeed);
-  Serial.println(rightMotorSpeed);
+  Serial.print((int)leftMotorSpeed);
+  Serial.print("  ");
+  Serial.print((int)rightMotorSpeed);
+  Serial.println("");
   
   /* Run LED strips */
   //Disable leds to reduce power draw
