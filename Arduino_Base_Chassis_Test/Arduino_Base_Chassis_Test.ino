@@ -23,7 +23,6 @@ void loop() {
   float leftMotorSpeed = 1500;
   float rightMotorSpeed = 1500;
   
-  
   float throttleValue = myIn.read(2);
   float turningValue= myIn.read(4);
   float chassisPowerValue = myIn.read(5);
@@ -43,19 +42,6 @@ void loop() {
    turningValue = map(turningValue, 1500,2000,1500,1750);   
   }
   
- 
-  //Copy our control signals out to our Module on the robot
-  //NOTE: Controller only provides 6, but the PulsePosition allows 8.
-  for(int i=1;i<=8; i++){
-    myOut.write(i,myIn.read(1));
-  }
-  //For the chassis
-  myOut.write(2,throttleValue);
-  myOut.write(4,turningValue);
-
-
-
-
   //Do Math for converting Arcade Drive to Tank Drive
 
   turningValue = map(turningValue,1000,2000,-2000,2000);
