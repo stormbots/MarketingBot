@@ -79,6 +79,7 @@ void loop() {
   float lightSetting =radioInput.read(6);
   // float ??? = radioInput.read(7);
   float chassisEnable= radioInput.read(8);
+  chassisEnable = 1000;
 
   throttleValue = constrain(throttleValue,1000,2000);
   turningValue = constrain(turningValue,1000,2000);
@@ -86,16 +87,16 @@ void loop() {
   lightSetting = constrain(lightSetting,1000,2000);
 
   /** Handle Low-power and disable switch */
-  if (chassisEnable <=1250){
-    //Disable drivetrain
-    throttleValue = 1500;
-    turningValue = 1500;
-  }
-  else if(chassisEnable <= 1750){
-    //Half speed
-    throttleValue = map(throttleValue, 1000,2000,1250,1750);
-    turningValue = map(turningValue, 1000,2000,1250,1750);
-  }
+//  if (chassisEnable <=1250){
+//    //Disable drivetrain
+//    throttleValue = 1500;
+//    turningValue = 1500;
+//  }
+//  else if(chassisEnable <= 1750){
+//    //Half speed
+//    throttleValue = map(throttleValue, 1000,2000,1250,1750);
+//    turningValue = map(turningValue, 1000,2000,1250,1750);
+//  }
  
   /** Copy our radio signals out to the current module */
   for(int i=1;i<=8; i++){
@@ -124,8 +125,12 @@ void loop() {
   }
  
   /* Write to Motors */
+  leftMotorSpeed = map(leftMotorSpeed, 999, 2001, 0, 255);
+  rightMotorSpeed = map(rightMotorSpeed, 999, 2001, 0, 255);
   analogWrite(MOTOR_LEFT_PIN,leftMotorSpeed);
   analogWrite(MOTOR_RIGHT_PIN,rightMotorSpeed);
+  Serial.println(leftMotorSpeed);
+  Serial.println(rightMotorSpeed);
   
   /* Run LED strips */
   //Disable leds to reduce power draw
