@@ -125,8 +125,10 @@ void loop() {
   }
  
   /* Write to Motors */
-  leftMotorSpeed = map(leftMotorSpeed, 999, 2001, 0, 255);
-  rightMotorSpeed = map(rightMotorSpeed, 999, 2001, 0, 255);
+  leftMotorSpeed = constrain(leftMotorSpeed,1000,2000);
+  rightMotorSpeed = constrain(rightMotorSpeed,1000,2000);
+  leftMotorSpeed = map(leftMotorSpeed, 1000, 2000, 0, 255);
+  rightMotorSpeed = map(rightMotorSpeed, 1000, 2000, 0, 255);
   analogWrite(MOTOR_LEFT_PIN,leftMotorSpeed);
   analogWrite(MOTOR_RIGHT_PIN,rightMotorSpeed);
   Serial.println(leftMotorSpeed);
