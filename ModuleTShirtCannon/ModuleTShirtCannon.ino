@@ -23,6 +23,8 @@
 #define ANGLE_TOP_SWITCH_PIN 5
 #define ANGLE_BOTTOM_SWITCH_PIN 6
 
+#define INDEX_SWITCH_PIN 7
+
 #define BUILT_IN_LED 13
 
 #define RADIO_IN_PIN 23
@@ -54,7 +56,7 @@ MiniPID pid = MiniPID(1.0,0.0,0.0);
 
 Encoder angleEncoder(ANGLE_ENCODER_A_PIN, ANGLE_ENCODER_B_PIN);
 
-Bounce indexSwitch = Bounce(INDEX_LOCK_PIN,10);
+Bounce indexSwitch = Bounce(INDEX_SWITCH_PIN,10);
 Bounce angleTopSwitch = Bounce(ANGLE_TOP_SWITCH_PIN ,10);
 Bounce angleBottomSwitch = Bounce(ANGLE_BOTTOM_SWITCH_PIN,10);
 
@@ -65,7 +67,8 @@ bool has_been_enabled = false;
 
 void setup(){
   pinMode(BUILT_IN_LED, OUTPUT);
-  radioCannonOutput.begin(RADIO_OUT_PIN);
+  pinMode(INDEX_SWITCH_PIN, INPUT);
+  //radioCannonOutput.begin(RADIO_OUT_PIN); //unused, but wired to controller board
   radioCannonInput.begin(RADIO_IN_PIN);
 
   //Configure angle PID
@@ -166,6 +169,10 @@ enum State last_state=RESET;
 void run_state_machine(bool cannonTrigger){
 
   indexSwitch.update();
+  if(indexSwitch.fallingEdge()|| indexSwitch.risingEdge() && indexSwitch.read()==INDEX_SWITCHED_PRESSED){
+    Serial.println("Index Switch Pressed");
+  }
+
   switch(state){
     case STARTUP:
       //index locked
@@ -177,7 +184,6 @@ void run_state_machine(bool cannonTrigger){
       //dump valve closed
       digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       //if the indexSwitch is tripped move to PRESSURIZING
-      indexSwitch.update();
       if (indexSwitch.read() == INDEX_SWITCHED_PRESSED){
         state=PRESSURIZING;
       }
@@ -262,7 +268,6 @@ void run_state_machine(bool cannonTrigger){
       //dump valve closed
       digitalWrite(DUMP_VALVE_PIN,DUMP_VALVE_CLOSED);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
-      indexSwitch.update();
       if(indexSwitch.read()==INDEX_SWITCHED_PRESSED || timer>3000){
         state=PRESSURIZING;
       }
@@ -275,6 +280,17 @@ void run_state_machine(bool cannonTrigger){
  
 
   if (last_state != state){
+    Serial.print("Entering state ");
+    switch(state){
+      case STARTUP : Serial.println("Startup");break;;
+      case PRESSURIZING : Serial.println("Pressurizing");break;;
+      case IDLE : Serial.println("Idle");break;;
+      case FIRING : Serial.println("Firing");break;;
+      case RECOVERY : Serial.println("Recovery");break;;
+      case RELOAD_UNLOCKED : Serial.println("Reload_unlocked");break;;
+      case RELOAD_LOCKED : Serial.println("Reload_locked");break;;
+      case RESET : Serial.println("reset");break;;
+    }
     timer=0;
     last_state=state;
   }
