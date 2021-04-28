@@ -41,9 +41,11 @@
 #define HIGH_GEAR true
 #define LOW_GEAR (!HIGH_GEAR)
 
-#define LIGHT_RELAY_PIN 4
+// Double shifter removed pin count, not currently available
+#define LIGHT_RELAY_PIN 17
 
-#define SHIFTER_PIN 3
+#define SHIFTER_PIN_A 4
+#define SHIFTER_PIN_B 3
 
 PulsePositionOutput radioOutput;
 PulsePositionInput radioInput;
@@ -62,7 +64,8 @@ void setup() {
   radioInput.begin(RADIO_IN_PIN);
   pinMode(LIGHT_RELAY_PIN,OUTPUT);
   pinMode(13,OUTPUT);
-  digitalWrite(SHIFTER_PIN, LOW_GEAR);
+  digitalWrite(SHIFTER_PIN_A, LOW_GEAR);
+  digitalWrite(SHIFTER_PIN_B, !digitalRead(SHIFTER_PIN_A));
 
   light_setup();
 }
