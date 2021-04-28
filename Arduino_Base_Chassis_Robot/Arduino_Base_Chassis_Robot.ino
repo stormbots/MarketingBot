@@ -1,5 +1,6 @@
 #include <PulsePosition.h>
 #include <elapsedMillis.h>
+#include <Servo.h>
 
 //LED Pins
 //These assignments cannot change: Hardware defined
@@ -36,6 +37,8 @@
 
 #define MOTOR_LEFT_PIN 10
 #define MOTOR_RIGHT_PIN 9
+Servo motorLeft;
+Servo motorRight;
 
 #define HIGH_GEAR true
 #define LOW_GEAR (!HIGH_GEAR)
@@ -65,6 +68,11 @@ void setup() {
   pinMode(13,OUTPUT);
   digitalWrite(SHIFTER_PIN_A, LOW_GEAR);
   digitalWrite(SHIFTER_PIN_B, !digitalRead(SHIFTER_PIN_A));
+
+  motorLeft.attach(MOTOR_LEFT_PIN);
+  motorLeft.writeMicroseconds(1500);
+  motorRight.attach(MOTOR_RIGHT_PIN);
+  motorRight.writeMicroseconds(1500);
 
   light_setup();
 }
@@ -127,12 +135,8 @@ void loop() {
   }
  
   /* Write to Motors */
-  leftMotorSpeed = constrain(leftMotorSpeed,1000,2000);
-  rightMotorSpeed = constrain(rightMotorSpeed,1000,2000);
-  leftMotorSpeed = map(leftMotorSpeed, 1000, 2000, 0, 255);
-  rightMotorSpeed = map(rightMotorSpeed, 1000, 2000, 0, 255);
-  analogWrite(MOTOR_LEFT_PIN,leftMotorSpeed);
-  analogWrite(MOTOR_RIGHT_PIN,rightMotorSpeed);
+  motorLeft.writeMicroseconds(leftMotorSpeed);
+  motorRight.writeMicroseconds(rightMotorSpeed);
   Serial.println(leftMotorSpeed);
   Serial.println(rightMotorSpeed);
   
