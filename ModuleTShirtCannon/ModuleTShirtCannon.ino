@@ -4,10 +4,11 @@
 #include <PulsePosition.h>
 #include <Bounce.h>
 #include <Encoder.h>
+#include <Servo.h>
 
 /* Hardware: */
 #define REVOLVER_MOTOR_PIN 10
-
+Servo revolverServo;
 #define DUMP_VALVE_PIN 16
 
 #define INDEX_LOCK_PIN 18
@@ -15,6 +16,7 @@
 #define FIRING_PLATE_PIN 17
 
 #define ELEVATION_MOTOR_PIN 9
+Servo  elevationServo;
 
 #define TERM_AUX_1 19
 #define TERM_AUX_2 20
@@ -31,7 +33,7 @@
 #define RADIO_OUT_PIN 22
 
 #define ANGLE_ENCODER_A_PIN 0
-#define ANGLE_ENCODER_B_PIN 15
+#define ANGLE_ENCODER_B_PIN 11
 #define ANGLE_ENCODER_ABSOLUTE_PIN 1
 
 //Degrees measured from horizon
@@ -52,7 +54,7 @@
 PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
 
-MiniPID pid = MiniPID(1.0,0.0,0.0);
+MiniPID pid = MiniPID(0.0,0.0,0.0);
 
 Encoder angleEncoder(ANGLE_ENCODER_A_PIN, ANGLE_ENCODER_B_PIN);
 
@@ -72,10 +74,15 @@ void setup(){
   radioCannonInput.begin(RADIO_IN_PIN);
 
   //Configure angle PID
-  pid.setOutputLimits(-127,127);
-  pid.setMaxIOutput(20);
+  pid.setOutputLimits(-500,500);
+  pid.setMaxIOutput(20);//change
 	// pid.setSetpointRange(double angle per cycle)
 
+  elevationServo.attach(ELEVATION_MOTOR_PIN);
+  elevationServo.writeMicroseconds(1500);
+  revolverServo.attach(REVOLVER_MOTOR_PIN);
+  revolverServo.writeMicroseconds(1500);
+  
   //wait to make sure our sensors are online before initializing
   delay(30); 
   //TODO: read sensor pulses and set position from Absolute encoder reading
@@ -92,7 +99,7 @@ void loop(){
   // //DEBUG// Hard coded values to determine actuator polarity
   // digitalWrite(REVOLVER_MOTOR_PIN,true);
   // digitalWrite(INDEX_LOCK_PIN,true);
-  // analogWrite(REVOLVER_MOTOR_PIN,127+32);
+  // revolverServo.writeMicroseconds(1500+100);
   // digitalWrite(FIRING_PLATE_PIN,true);
   // digitalWrite(DUMP_VALVE_PIN,true);
   //return; //Use when debugging to prevent other actuator changes
@@ -127,22 +134,21 @@ void loop(){
   angleTopSwitch.update();
   angleBottomSwitch.update();
   //NOTE: PID returns +/- range, so offset by motor neutral
-  double angleMotorOutput=127+pid.getOutput(sensorAngle,targetAngle);
+  double angleMotorOutput=1500+pid.getOutput(sensorAngle,targetAngle);
  
   if (angleTopSwitch.read() == false){
     angleEncoder.write(ANGLE_ENCODER_RANGE);
-    if (angleMotorOutput > 127){
-      angleMotorOutput = 127;
+    if (angleMotorOutput > 1500){
+      angleMotorOutput = 1500;
     }
   }
   else if(angleBottomSwitch.read() == false){
     angleEncoder.write(0);
-    if (angleMotorOutput < 127){
-      angleMotorOutput = 127;
+    if (angleMotorOutput < 1500){
+      angleMotorOutput = 1500;
     }
   }
-  analogWrite(ELEVATION_MOTOR_PIN,angleMotorOutput);
-
+  elevationServo.writeMicroseconds(angleMotorOutput);
 
   /*****************************************/
   /********* Process State Machine *********/
@@ -169,7 +175,7 @@ enum State last_state=RESET;
 void run_state_machine(bool cannonTrigger){
 
   indexSwitch.update();
-  if(indexSwitch.fallingEdge()|| indexSwitch.risingEdge() && indexSwitch.read()==INDEX_SWITCHED_PRESSED){
+  if((indexSwitch.fallingEdge()|| indexSwitch.risingEdge()) && indexSwitch.read()==INDEX_SWITCHED_PRESSED){
     Serial.println("Index Switch Pressed");
   }
 
@@ -178,7 +184,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor on
-      analogWrite(REVOLVER_MOTOR_PIN,127+32);
+      revolverServo.writeMicroseconds(1500+100);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
@@ -192,7 +198,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
-      analogWrite(REVOLVER_MOTOR_PIN,127);
+      revolverServo.writeMicroseconds(1500);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
@@ -206,7 +212,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
-      analogWrite(REVOLVER_MOTOR_PIN,127);
+      revolverServo.writeMicroseconds(1500);
       //firing plate closed
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve closed
@@ -220,7 +226,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
-      analogWrite(REVOLVER_MOTOR_PIN,127);
+      revolverServo.writeMicroseconds(1500);
       //firing plate closed
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve open
@@ -234,7 +240,7 @@ void run_state_machine(bool cannonTrigger){
       // index unlocked
       digitalWrite(INDEX_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor off
-      analogWrite(REVOLVER_MOTOR_PIN,127);
+      revolverServo.writeMicroseconds(1500);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       // dump valve closed
@@ -248,7 +254,7 @@ void run_state_machine(bool cannonTrigger){
       //index unlocked
       digitalWrite(INDEX_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor on
-      analogWrite(REVOLVER_MOTOR_PIN,127+32);//placeholder value 1/8 speed
+      revolverServo.writeMicroseconds(1500+100);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
@@ -262,7 +268,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor on
-      analogWrite(REVOLVER_MOTOR_PIN,127+32);//placeholder value 1/8 speed
+      revolverServo.writeMicroseconds(1500+100);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
