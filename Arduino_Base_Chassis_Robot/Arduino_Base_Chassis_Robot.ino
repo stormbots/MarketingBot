@@ -109,6 +109,9 @@ void loop() {
 //  }
  
   /** Copy our radio signals out to the current module */
+  if(radioInput.available() < 8){
+    return;
+  }
   for(int i=1;i<=8; i++){
     radioOutput.write(i,radioInput.read(i));
   }
@@ -117,22 +120,23 @@ void loop() {
   radioOutput.write(4,turningValue);
 
   /** Generate arcade drive left/right outputs */
-  turningValue = map(turningValue,1000,2000,-2000,2000);
+  turningValue = map(turningValue,1000,2000, 100,-100);
   
   leftMotorSpeed= throttleValue + turningValue;
   rightMotorSpeed = throttleValue - turningValue; 
   {
     //convert our ranges
     float vLeft  = map(leftMotorSpeed,1000,2000,-1,1);
-    float vRight = map(rightMotorSpeed,1000,2000,-1,1);
-    
-    float vMax = abs(max(vLeft,vRight));
-    
-    if(vMax > 1){
+    float vRight = map(rightMotorSpeed,1000,2000,-1,1);    
+    float vMax = abs(max(vLeft,vRight));    if(vMax > 1){
       leftMotorSpeed =  map(vLeft/vMax,-1,1,1000,2000);
       rightMotorSpeed =  map(vRight/vMax,-1,1,1000,2000);
-    }
+    }    rightMotorSpeed =  map(rightMotorSpeed,1000,2000,2000,1000);
   }
+
+
+
+  
  
   /* Write to Motors */
   motorLeft.writeMicroseconds(leftMotorSpeed);
