@@ -50,6 +50,8 @@ Servo  elevationServo;
 #define FIRING_PLATE_CLOSED false
 #define INDEX_SWITCHED_PRESSED false
 
+#define NEUTRAL_OUTPUT 1500
+#define FORWARD_OUTPUT 100
 
 PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
@@ -79,9 +81,9 @@ void setup(){
 	// pid.setSetpointRange(double angle per cycle)
 
   elevationServo.attach(ELEVATION_MOTOR_PIN);
-  elevationServo.writeMicroseconds(1500);
+  elevationServo.writeMicroseconds(NEUTRAL_OUTPUT);
   revolverServo.attach(REVOLVER_MOTOR_PIN);
-  revolverServo.writeMicroseconds(1500);
+  revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
   
   //wait to make sure our sensors are online before initializing
   delay(30); 
@@ -134,18 +136,18 @@ void loop(){
   angleTopSwitch.update();
   angleBottomSwitch.update();
   //NOTE: PID returns +/- range, so offset by motor neutral
-  double angleMotorOutput=1500+pid.getOutput(sensorAngle,targetAngle);
+  double angleMotorOutput=NEUTRAL_OUTPUT+pid.getOutput(sensorAngle,targetAngle);
  
   if (angleTopSwitch.read() == false){
     angleEncoder.write(ANGLE_ENCODER_RANGE);
-    if (angleMotorOutput > 1500){
-      angleMotorOutput = 1500;
+    if (angleMotorOutput > NEUTRAL_OUTPUT){
+      angleMotorOutput = NEUTRAL_OUTPUT;
     }
   }
   else if(angleBottomSwitch.read() == false){
     angleEncoder.write(0);
-    if (angleMotorOutput < 1500){
-      angleMotorOutput = 1500;
+    if (angleMotorOutput < NEUTRAL_OUTPUT){
+      angleMotorOutput = NEUTRAL_OUTPUT;
     }
   }
   elevationServo.writeMicroseconds(angleMotorOutput);
@@ -184,7 +186,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor on
-      revolverServo.writeMicroseconds(1500+100);
+      revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
@@ -198,7 +200,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
-      revolverServo.writeMicroseconds(1500);
+      revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
@@ -212,7 +214,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
-      revolverServo.writeMicroseconds(1500);
+      revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate closed
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve closed
@@ -226,7 +228,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
-      revolverServo.writeMicroseconds(1500);
+      revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate closed
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve open
@@ -240,7 +242,7 @@ void run_state_machine(bool cannonTrigger){
       // index unlocked
       digitalWrite(INDEX_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor off
-      revolverServo.writeMicroseconds(1500);
+      revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       // dump valve closed
@@ -254,7 +256,7 @@ void run_state_machine(bool cannonTrigger){
       //index unlocked
       digitalWrite(INDEX_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor on
-      revolverServo.writeMicroseconds(1500+100);
+      revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
@@ -268,7 +270,7 @@ void run_state_machine(bool cannonTrigger){
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
       //revolver motor on
-      revolverServo.writeMicroseconds(1500+100);
+      revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
