@@ -74,24 +74,16 @@ This enables all buttons to work correctly. By default most buttons are disabled
 
 ### RX Settings
 #### Failsafe
-```
-==== Failsafe ===
-Channel 1   OFF
-Channel 2   ON, 50%
-Channel 3   OFF
-Channel 4   ON, 50%
-Channel 5   ON
-Channel 6   OFF
-Channel 7   OFF
-Channel 8   8, <TODO THIS NEEDS WORK/CORRECTIONS>
-Channel 9   OFF
-Channel 10  OFF
-```
-Note, that the values cannot be manually entered: Instead, the controller records the current
-channel value when the failsafe is set to `on`. This means the failsafes must be 
-entered last to have meaningful and correct values, particularly for Channel 8 due to the switch and muxing.
-
-
+Channel 1 : 0%
+Channel 2: 0%
+Channel 3: 0%
+Channel 4: 0%
+Channel 5: 0%
+Channel 6: OFF
+Channel 7: OFF
+Channel 8: OFF
+Channel 9: OFF
+Channel 10: OFF
 # Functions Setup
 ### Mixes
 We configure 2 mixes, which can be selected by the `Mix #` line.
