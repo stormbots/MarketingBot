@@ -66,6 +66,8 @@ void setup() {
   radioInput.begin(RADIO_IN_PIN);
   pinMode(LIGHT_RELAY_PIN,OUTPUT);
   pinMode(13,OUTPUT);
+  pinMode(SHIFTER_PIN_A,OUTPUT);
+  pinMode(SHIFTER_PIN_B,OUTPUT);
   digitalWrite(SHIFTER_PIN_A, LOW_GEAR);
   digitalWrite(SHIFTER_PIN_B, !digitalRead(SHIFTER_PIN_A));
 
@@ -78,15 +80,29 @@ void setup() {
 }
 
 void loop() {
+
+  /*Debug for Shifting Actuators*/
+  //(SHIFTER_PIN_A,HIGH_GEAR);
+  //digitalWrite(SHIFTER_PIN_B,LOW_GEAR);
+  //delay(3000);
+  //digitalWrite(SHIFTER_PIN_A,LOW_GEAR);
+  //digitalWrite(SHIFTER_PIN_B,HIGH_GEAR);
+  //delay(3000);
+  //'return;
+ 
+
+
+  
   float leftMotorSpeed = 1500;
   float rightMotorSpeed = 1500;
-
-  // float ??? = radioInput.read(1);
+  
+  // float ??? = radioInput.read(1); EMPTY
   float throttleValue = radioInput.read(2);
-  // float ??? = radioInput.read(3);
-  float turningValue= radioInput.read(4); 
-   // float ??? = radioInput.read(5);
-  float lightSetting =radioInput.read(6);
+  // float ??? = radioInput.read(3); TAKEN BY CANNON ELEVATION
+  float turningValue= radioInput.read(1); 
+  float shiftValue = radioInput.read(5);
+  //float lightSetting =radioInput.read(6); TAKEN BY TRIGGER
+  // ONLY ^^^^^^^^ WORK WITH CURRENT RECIEVER
   // float ??? = radioInput.read(7);
   float chassisEnable= radioInput.read(8);
   chassisEnable = 1000;
@@ -94,8 +110,8 @@ void loop() {
   throttleValue = constrain(throttleValue,1000,2000);
   turningValue = constrain(turningValue,1000,2000);
   chassisEnable = constrain(chassisEnable,1000,2000);
-  lightSetting = constrain(lightSetting,1000,2000);
-
+  //lightSetting = constrain(lightSetting,1000,2000);
+  shiftValue = constrain(shiftValue,1000,2000);
   /** Handle Low-power and disable switch */
 //  if (chassisEnable <=1250){
 //    //Disable drivetrain
@@ -118,7 +134,7 @@ void loop() {
   //Write out throttle values, as these may be modified by Chassis
   radioOutput.write(2,throttleValue);
   radioOutput.write(4,turningValue);
-
+  radioOutput.write(1,shiftValue);
   /** Generate arcade drive left/right outputs */
   turningValue = map(turningValue,1000,2000, 100,-100);
   
@@ -133,11 +149,18 @@ void loop() {
       rightMotorSpeed =  map(vRight/vMax,-1,1,1000,2000);
     }    rightMotorSpeed =  map(rightMotorSpeed,1000,2000,2000,1000);
   }
-
-
-
   
- 
+  /* Shift depending on switch*/
+  if (shiftValue <= 1500){
+    //shift to low if switch is low
+    digitalWrite(SHIFTER_PIN_A,LOW_GEAR);
+    digitalWrite(SHIFTER_PIN_B,HIGH_GEAR);
+  }
+  else {
+    digitalWrite(SHIFTER_PIN_A,HIGH_GEAR);
+    digitalWrite(SHIFTER_PIN_B,LOW_GEAR);
+  }
+  
   /* Write to Motors */
   motorLeft.writeMicroseconds(leftMotorSpeed);
   motorRight.writeMicroseconds(rightMotorSpeed);
@@ -156,7 +179,7 @@ void loop() {
     //turns leds on
     digitalWrite(LIGHT_RELAY_PIN,HIGH);
   }
-  light_loop(lightSetting);
+  //light_loop(lightSetting);
 
   /* Check our system heartbeat */
   if(heartbeat > 1000){
