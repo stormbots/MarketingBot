@@ -136,7 +136,7 @@ void loop() {
   radioOutput.write(4,turningValue);
   radioOutput.write(7,shiftValue);
   /** Generate arcade drive left/right outputs */
-  turningValue = map(turningValue,1000,2000, 100,-100);
+  turningValue = map(turningValue,1000,2000, 500,-500);
   
   leftMotorSpeed= throttleValue + turningValue;
   rightMotorSpeed = throttleValue - turningValue; 
