@@ -100,7 +100,7 @@ void loop() {
   float throttleValue = radioInput.read(2);
   // float ??? = radioInput.read(3); TAKEN BY CANNON ELEVATION
   float turningValue= radioInput.read(1); 
-  float shiftValue = radioInput.read(5);
+  float shiftValue = radioInput.read(7);
   //float lightSetting =radioInput.read(6); TAKEN BY TRIGGER
   // ONLY ^^^^^^^^ WORK WITH CURRENT RECIEVER
   // float ??? = radioInput.read(7);
@@ -134,7 +134,7 @@ void loop() {
   //Write out throttle values, as these may be modified by Chassis
   radioOutput.write(2,throttleValue);
   radioOutput.write(4,turningValue);
-  radioOutput.write(1,shiftValue);
+  radioOutput.write(7,shiftValue);
   /** Generate arcade drive left/right outputs */
   turningValue = map(turningValue,1000,2000, 100,-100);
   
@@ -147,7 +147,7 @@ void loop() {
     float vMax = abs(max(vLeft,vRight));    if(vMax > 1){
       leftMotorSpeed =  map(vLeft/vMax,-1,1,1000,2000);
       rightMotorSpeed =  map(vRight/vMax,-1,1,1000,2000);
-    }    rightMotorSpeed =  map(rightMotorSpeed,1000,2000,2000,1000);
+    }    leftMotorSpeed =  map(leftMotorSpeed,1000,2000,2000,1000);
   }
   
   /* Shift depending on switch*/
