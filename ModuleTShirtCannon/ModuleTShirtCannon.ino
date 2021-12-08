@@ -115,7 +115,7 @@ void loop(){
   //TODO: Read safety signals somehow
     
 
-  bool cannonTrigger = radioCannonInput.read(6) <= 1250;
+  bool cannonTrigger = radioCannonInput.read(8) <= 1250;
   double targetAngle = radioCannonInput.read(3);
   
   targetAngle = map(targetAngle,1000,2000,ANGLE_MIN_DEGREES,ANGLE_MAX_DEGREES);
