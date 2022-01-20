@@ -9,23 +9,24 @@
 /* Hardware: */
 #define REVOLVER_MOTOR_PIN 10
 Servo revolverServo;
-#define FIRING_PIN 16
+#define FIRING_PIN_1 4
+#define FIRING_PIN_2 5
 
 #define INDEX_LOCK_PIN 6 
 
-#define FIRING_PLATE_PIN 17
+#define FIRING_PLATE_PIN 7
 
 #define ELEVATION_MOTOR_PIN 9
 Servo  elevationServo;
 
-#define TERM_AUX_1 19
-#define TERM_AUX_2 20
-#define TERM_AUX_3 21
+//#define TERM_AUX_1 19
+//#define TERM_AUX_2 20
+//#define TERM_AUX_3 21
 
-#define ANGLE_TOP_SWITCH_PIN 5
+#define ANGLE_TOP_SWITCH_PIN 21
 #define ANGLE_BOTTOM_SWITCH_PIN 18
 
-#define INDEX_SWITCH_PIN 7
+#define INDEX_SWITCH_PIN 20
 
 #define BUILT_IN_LED 13
 
@@ -44,11 +45,13 @@ Servo  elevationServo;
 // Named values for actuators
 #define INDEX_LOCKED HIGH
 #define INDEX_UNLOCKED LOW
-#define FIRING_PIN_OPEN HIGH
-#define FIRING_PIN_CLOSED LOW
+#define FIRING_PIN_1_OPEN HIGH
+#define FIRING_PIN_1_CLOSED LOW
+#define FIRING_PIN_2_OPEN LOW
+#define FIRING_PIN_2_CLOSED HIGH
 #define FIRING_PLATE_OPEN HIGH
 #define FIRING_PLATE_CLOSED LOW
-#define INDEX_SWITCHED_PRESSED LOW
+#define INDEX_SWITCH_PRESSED LOW
 
 #define NEUTRAL_OUTPUT 1500
 #define FORWARD_OUTPUT 100
@@ -74,8 +77,10 @@ void setup(){
   pinMode(BUILT_IN_LED, OUTPUT);
   pinMode(INDEX_SWITCH_PIN, INPUT);
   pinMode(INDEX_LOCK_PIN, OUTPUT);
-  pinMode(FIRING_PIN,OUTPUT);
+  pinMode(FIRING_PIN_1,OUTPUT);
+  pinMode(FIRING_PIN_2, OUTPUT);
   pinMode(FIRING_PLATE_PIN,OUTPUT);
+  
   //radioCannonOutput.begin(RADIO_OUT_PIN); //unused, but wired to controller board
   radioCannonInput.begin(RADIO_IN_PIN);
 
@@ -107,7 +112,7 @@ void loop(){
   // digitalWrite(INDEX_LOCK_PIN,true);
   // revolverServo.writeMicroseconds(1500+100);
   // digitalWrite(FIRING_PLATE_PIN,true);
-  // digitalWrite(FIRING_PIN,true);
+  // digitalWrite(FIRING_PIN_1,true);
   //return; //Use when debugging to prevent other actuator changes
  
 
@@ -182,7 +187,7 @@ enum State last_state=RESET;
 void run_state_machine(bool cannonTrigger){
   //Serial.println(cannonTrigger);
   indexSwitch.update();
-  if((indexSwitch.fallingEdge()|| indexSwitch.risingEdge()) && indexSwitch.read()==INDEX_SWITCHED_PRESSED){
+  if((indexSwitch.fallingEdge()|| indexSwitch.risingEdge()) && indexSwitch.read()==INDEX_SWITCH_PRESSED){
     Serial.println("Index Switch Pressed");
   }
 
@@ -194,10 +199,11 @@ void run_state_machine(bool cannonTrigger){
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
-      //dump valve closed
-      digitalWrite(FIRING_PIN,FIRING_PIN_CLOSED);
+      //Firing valve closed
+      digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped move to PRESSURIZING
-      if (indexSwitch.read() == INDEX_SWITCHED_PRESSED){
+      if (indexSwitch.read() == INDEX_SWITCH_PRESSED){
         state=PRESSURIZING;
       }
     break;
@@ -209,7 +215,8 @@ void run_state_machine(bool cannonTrigger){
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
-      digitalWrite(FIRING_PIN,FIRING_PIN_CLOSED);
+      digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the trigger for the cannon is not pressed and the timer has expired move to IDLE
       
       if (cannonTrigger == false || timer>3000){
@@ -224,7 +231,8 @@ void run_state_machine(bool cannonTrigger){
       //firing plate closed
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve closed
-      digitalWrite(FIRING_PIN,FIRING_PIN_CLOSED);
+      digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if the trigger for the cannon is pressed move to FIRING
       if (cannonTrigger){
         state = FIRING;
@@ -233,13 +241,15 @@ void run_state_machine(bool cannonTrigger){
     case FIRING:
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
-      Serial.println(digitalRead(INDEX_LOCK_PIN));
+      //Serial.println(digitalRead(INDEX_LOCK_PIN));
       //revolver motor off
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate closed
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
+      //Serial.println(digitalRead(FIRING_PLATE_PIN));
       //dump valve open
-      digitalWrite(FIRING_PIN,FIRING_PIN_OPEN);
+      digitalWrite(FIRING_PIN_1,FIRING_PIN_1_OPEN);
+      digitalWrite(FIRING_PIN_2,FIRING_PIN_2_CLOSED);
       // if the timer expires advance to RECOVERY
       if (timer > 3000){
         state = RECOVERY;
@@ -252,8 +262,10 @@ void run_state_machine(bool cannonTrigger){
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
+      //Serial.println(digitalRead(FIRING_PLATE_PIN));
       // dump valve closed
-      digitalWrite(FIRING_PIN,FIRING_PIN_CLOSED);
+      digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_UNLOCKED
       if (timer > 3000){
         state=RELOAD_UNLOCKED;
@@ -262,31 +274,33 @@ void run_state_machine(bool cannonTrigger){
     case RELOAD_UNLOCKED:
       //index unlocked
       digitalWrite(INDEX_LOCK_PIN,INDEX_UNLOCKED);
-      Serial.println(digitalRead(INDEX_LOCK_PIN));
+      //Serial.println(digitalRead(FIRING_PLATE_PIN));
       //revolver motor on
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       //dump valve closed
-      digitalWrite(FIRING_PIN,FIRING_PIN_CLOSED);
+      digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (timer > 3000){
+      if (timer > 200){
         state=RELOAD_LOCKED;
       }
     break;
     case RELOAD_LOCKED:
       //index locked
       digitalWrite(INDEX_LOCK_PIN,INDEX_LOCKED);
-      Serial.println(digitalRead(INDEX_LOCK_PIN));
+      //Serial.println(digitalRead(INDEX_LOCK_PIN));
       //revolver motor on
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
       
       //dump valve closed
-      digitalWrite(FIRING_PIN,FIRING_PIN_CLOSED);
+      digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
-      if(indexSwitch.read()==INDEX_SWITCHED_PRESSED || timer>3000){
+      if(indexSwitch.read()==INDEX_SWITCH_PRESSED && timer>100){
         state=PRESSURIZING;
       }
     break;
