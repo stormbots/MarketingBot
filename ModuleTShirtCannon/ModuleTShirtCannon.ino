@@ -12,9 +12,9 @@ Servo revolverServo;
 #define FIRING_PIN_1 4
 #define FIRING_PIN_2 5
 
-#define INDEX_LOCK_PIN 6 
+#define INDEX_LOCK_PIN 7 
 
-#define FIRING_PLATE_PIN 7
+#define FIRING_PLATE_PIN 6
 
 #define ELEVATION_MOTOR_PIN 9
 Servo  elevationServo;
@@ -45,12 +45,12 @@ Servo  elevationServo;
 // Named values for actuators
 #define INDEX_LOCKED HIGH
 #define INDEX_UNLOCKED LOW
-#define FIRING_PIN_1_OPEN HIGH
+#define FIRING_PIN_1_OPEN LOW
 #define FIRING_PIN_1_CLOSED LOW
-#define FIRING_PIN_2_OPEN LOW
+#define FIRING_PIN_2_OPEN HIGH
 #define FIRING_PIN_2_CLOSED HIGH
-#define FIRING_PLATE_OPEN HIGH
-#define FIRING_PLATE_CLOSED LOW
+#define FIRING_PLATE_OPEN LOW
+#define FIRING_PLATE_CLOSED HIGH
 #define INDEX_SWITCH_PRESSED LOW
 
 #define NEUTRAL_OUTPUT 1500
@@ -198,7 +198,7 @@ void run_state_machine(bool cannonTrigger){
       //revolver motor on
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //Firing valve closed
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
@@ -213,13 +213,13 @@ void run_state_machine(bool cannonTrigger){
       //revolver motor off
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //dump valve closed
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the trigger for the cannon is not pressed and the timer has expired move to IDLE
       
-      if (cannonTrigger == false || timer>3000){
+      if (cannonTrigger == false && timer>3000){
         state=IDLE;
       }
     break;
@@ -261,7 +261,7 @@ void run_state_machine(bool cannonTrigger){
       //revolver motor off
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate open
-      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
+      digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_CLOSED);
       //Serial.println(digitalRead(FIRING_PLATE_PIN));
       // dump valve closed
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
