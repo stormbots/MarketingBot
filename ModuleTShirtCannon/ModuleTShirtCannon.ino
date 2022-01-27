@@ -43,18 +43,18 @@ Servo  elevationServo;
 #define ANGLE_ENCODER_RANGE 4096
 
 // Named values for actuators
-#define INDEX_LOCKED HIGH
-#define INDEX_UNLOCKED LOW
-#define FIRING_PIN_1_OPEN LOW
+#define INDEX_LOCKED LOW
+#define INDEX_UNLOCKED HIGH
+#define FIRING_PIN_1_OPEN HIGH
 #define FIRING_PIN_1_CLOSED LOW
 #define FIRING_PIN_2_OPEN HIGH
-#define FIRING_PIN_2_CLOSED HIGH
-#define FIRING_PLATE_OPEN LOW
-#define FIRING_PLATE_CLOSED HIGH
+#define FIRING_PIN_2_CLOSED LOW
+#define FIRING_PLATE_OPEN HIGH
+#define FIRING_PLATE_CLOSED LOW
 #define INDEX_SWITCH_PRESSED LOW
 
 #define NEUTRAL_OUTPUT 1500
-#define FORWARD_OUTPUT 100
+#define FORWARD_OUTPUT 75
 
 PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
@@ -124,7 +124,7 @@ void loop(){
   //TODO: Read safety signals somehow
     
 
-  bool cannonTrigger = radioCannonInput.read(8) >= 1250;
+  bool cannonTrigger = radioCannonInput.read(8) >= 1500;
   //Serial.println(radioCannonInput.read(8));
   double targetAngle = radioCannonInput.read(3);
   
@@ -251,7 +251,7 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_OPEN);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_CLOSED);
       // if the timer expires advance to RECOVERY
-      if (timer > 3000){
+      if (timer > 1000){
         state = RECOVERY;
       }
     break;
@@ -279,11 +279,12 @@ void run_state_machine(bool cannonTrigger){
       revolverServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
+      delay(1000);
       //dump valve closed
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (timer > 200){
+      if (timer > 50){
         state=RELOAD_LOCKED;
       }
     break;
@@ -300,7 +301,7 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
-      if(indexSwitch.read()==INDEX_SWITCH_PRESSED && timer>100){
+      if(timer>200){
         state=PRESSURIZING;
       }
     break;
