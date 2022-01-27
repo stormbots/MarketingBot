@@ -284,7 +284,7 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (timer > 50){
+      if (timer > 25){
         state=RELOAD_LOCKED;
       }
     break;
@@ -301,7 +301,7 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
-      if(timer>200){
+      if(timer>300){
         state=PRESSURIZING;
       }
     break;
