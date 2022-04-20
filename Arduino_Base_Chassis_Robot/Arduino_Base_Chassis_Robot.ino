@@ -76,7 +76,7 @@ void setup() {
   motorRight.attach(MOTOR_RIGHT_PIN);
   motorRight.writeMicroseconds(1500);
 
-  //light_setup();
+  light_setup();
 }
 
 void loop() {
@@ -136,7 +136,7 @@ void loop() {
   radioOutput.write(4,turningValue);
   radioOutput.write(7,shiftValue);
   /** Generate arcade drive left/right outputs */
-  turningValue = map(turningValue,1000,2000, -200,200);
+  turningValue = map(turningValue,1000,2000, 500,-500);
   
   leftMotorSpeed= throttleValue + turningValue;
   rightMotorSpeed = throttleValue - turningValue; 
