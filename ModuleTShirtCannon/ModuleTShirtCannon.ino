@@ -83,7 +83,7 @@ void setup(){
 
   //Setting Pin Modes
   pinMode(BUILT_IN_LED, OUTPUT);
-  pinMode(INDEX_SWITCH_PIN, INPUT);
+  //pinMode(INDEX_SWITCH_PIN, INPUT);
   pinMode(CYLINDER_LOCK_PIN, OUTPUT);
   pinMode(FIRING_PIN_1,OUTPUT);
   pinMode(FIRING_PIN_2, OUTPUT);
@@ -118,7 +118,7 @@ void loop(){
   //Read Radio Channels
   bool cannonTrigger = radioCannonInput.read(8) >= 1500;
   double targetAngle = radioCannonInput.read(3);
-
+  
   //Map/Lerp the Radio Signal to Angles
   targetAngle = map(targetAngle,1000,2000,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
 
@@ -170,7 +170,7 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       
       state=PRESSURIZING;
-      }
+      
     break;
     case PRESSURIZING:
       //index locked
@@ -251,7 +251,6 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      Serial.println(timer);
       if (timer > 200){
         state=RELOAD_LOCKED;
       }
