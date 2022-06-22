@@ -92,6 +92,7 @@ void setup(){
   //Begin Reading Radio
   radioCannonInput.begin(RADIO_IN_PIN);
 
+
   //Configure elevationPID
   elevationPID.setOutputLimits(-500,500);
   elevationPID.setMaxIOutput(20);//TODO needs tuning
@@ -114,9 +115,14 @@ void loop(){
     cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
-
+  //Checks if controller is off, if off abort loop
+  if (radioCannonInput.read(8)<200){
+    return;
+  }
   //Read Radio Channels
   bool cannonTrigger = radioCannonInput.read(8) >= 1500;
+  //  Serial.println(radioCannonInput.read(8));
+  //  Serial.println (cannonTrigger);
   double targetAngle = radioCannonInput.read(3);
   
   //Map/Lerp the Radio Signal to Angles

@@ -142,7 +142,7 @@ void loop() {
   rightMotorSpeed = throttleValue - turningValue; 
   {
     //convert our ranges
-    float vLeft  = map(leftMotorSpeed,1000,2000,-1,1);
+    float vLeft  = map(leftMotorSpeed,1000,2000,-1,1);  
     float vRight = map(rightMotorSpeed,1000,2000,-1,1);    
     float vMax = abs(max(vLeft,vRight));    if(vMax > 1){
       leftMotorSpeed =  map(vLeft/vMax,-1,1,1000,2000);
