@@ -27,7 +27,7 @@
 
 #define BUILT_IN_LED 13
 
-#define RADIO_IN_PIN 2
+#define RADIO_IN_PIN 22
 //Normal pin is 22, messing around with it to try to get thte top working independently
 #define RADIO_OUT_PIN 23
 
@@ -43,10 +43,10 @@
 #define INDEX_LOCKED LOW
 #define INDEX_UNLOCKED HIGH
 
-#define FIRING_PIN_1_OPEN HIGH
-#define FIRING_PIN_1_CLOSED LOW
-#define FIRING_PIN_2_OPEN HIGH
-#define FIRING_PIN_2_CLOSED LOW
+#define FIRING_PIN_1_OPEN LOW
+#define FIRING_PIN_1_CLOSED HIGH
+#define FIRING_PIN_2_OPEN LOW
+#define FIRING_PIN_2_CLOSED HIGH
 
 #define FIRING_PLATE_OPEN HIGH
 #define FIRING_PLATE_CLOSED LOW
@@ -118,7 +118,7 @@ void loop(){
     
   }
   //Checks if controller is off, if off abort loop
-  //  if (radioCannonInput.read(8)<1000){
+  //  if (radioCannonInput.read(8)<200){
   //    return;
   //  }
   //Read Radio Channels
