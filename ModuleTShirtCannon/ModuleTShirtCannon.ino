@@ -21,14 +21,15 @@
 #define ELEVATION_MOTOR_PIN 9
 
 //Empty Pins for Controls Use
-#define TERM_AUX_1 18
-#define TERM_AUX_2 20
-#define TERM_AUX_3 21
+//#define TERM_AUX_1 18
+//#define TERM_AUX_2 20
+//#define TERM_AUX_3 21
 
 #define BUILT_IN_LED 13
 
-#define RADIO_IN_PIN 23
-#define RADIO_OUT_PIN 22
+#define RADIO_IN_PIN 2
+//Normal pin is 22, messing around with it to try to get thte top working independently
+#define RADIO_OUT_PIN 23
 
 #define ELEVATION_ENCODER_PIN_1 0 //TODO Check that this is the correct pin number
 #define ELEVATION_ENCODER_PIN_2 11  //TODO Check that this is the correct pin number
@@ -74,8 +75,8 @@ elapsedMillis timer;
 elapsedMillis cannonHeartbeat;
 
 //Booleans
-bool has_been_enabled = false;
 bool cannonTrigger = false;
+bool pressureRelease = false;
 
 void setup(){
   //Starts Serial For Debug
@@ -91,13 +92,13 @@ void setup(){
 
   //Begin Reading Radio
   radioCannonInput.begin(RADIO_IN_PIN);
-
+  radioCannonOutput.begin(RADIO_OUT_PIN);
 
   //Configure elevationPID
   elevationPID.setOutputLimits(-500,500);
   elevationPID.setMaxIOutput(20);//TODO needs tuning
 	//elevationPID.setSetpointRange(double angle per cycle)
-
+  
   //Set Motors to 0 On Startup
   elevationServo.attach(ELEVATION_MOTOR_PIN);
   elevationServo.writeMicroseconds(NEUTRAL_OUTPUT);
@@ -114,15 +115,18 @@ void loop(){
   if (cannonHeartbeat > 1000){
     cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
+    
   }
   //Checks if controller is off, if off abort loop
-  if (radioCannonInput.read(8)<200){
-    return;
-  }
+  //  if (radioCannonInput.read(8)<1000){
+  //    return;
+  //  }
   //Read Radio Channels
   bool cannonTrigger = radioCannonInput.read(8) >= 1500;
-  //  Serial.println(radioCannonInput.read(8));
-  //  Serial.println (cannonTrigger);
+  bool pressureRelease = radioCannonInput.read(7) >= 1400;
+  //Serial.println(radioCannonInput.read(8));
+  //Serial.println("  ");
+  //Serial.println (cannonTrigger);
   double targetAngle = radioCannonInput.read(3);
   
   //Map/Lerp the Radio Signal to Angles
@@ -139,8 +143,8 @@ void loop(){
   elevationServo.writeMicroseconds(angleMotorOutput);
 
   //Run State Machine
-  run_state_machine(cannonTrigger);
-
+  run_state_machine(cannonTrigger, pressureRelease);
+  Serial.println(cannonTrigger);
   delay(10);
 }
 
@@ -148,6 +152,7 @@ enum State{
   STARTUP,
   PRESSURIZING,
   IDLE,
+  DUMPPRESSURE,
   FIRING,
   RECOVERY,
   RELOAD_UNLOCKED,
@@ -158,10 +163,10 @@ enum State{
 enum State state = STARTUP;
 enum State last_state=RESET;
 
-void run_state_machine(bool cannonTrigger){
+void run_state_machine(bool cannonTrigger, bool pressureRelease){
   switch(state){
     case STARTUP:
-      
+      Serial.println("STARTUP");
       //The Index should be Locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       
@@ -177,8 +182,11 @@ void run_state_machine(bool cannonTrigger){
       
       state=PRESSURIZING;
       
+      
     break;
     case PRESSURIZING:
+      Serial.println("PRESSURIZING");
+
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
@@ -196,6 +204,7 @@ void run_state_machine(bool cannonTrigger){
       }
     break;
     case IDLE:
+      Serial.println("IDLE");
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
@@ -209,8 +218,31 @@ void run_state_machine(bool cannonTrigger){
       if (cannonTrigger){
         state = FIRING;
       }
+      //if the pressure release is swithed move to dump pressure
+      else if(pressureRelease){
+        state=DUMPPRESSURE;
+      }
+    break;
+    case DUMPPRESSURE:
+      Serial.println("DUMPPRESSURE");
+
+      //index locked
+      digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
+      //Revolver motor off
+      cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
+      //firing plate opened
+      digitalWrite(FIRING_PLATE_PIN, FIRING_PLATE_OPEN);
+      //dump valve closed 
+      digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
+      
+      //if trigger is not pressed and pressure release is turned back off return to idle
+      if (cannonTrigger == false && pressureRelease == false){
+        state = IDLE;
+      }
     break;
     case FIRING:
+      Serial.println("FIRING");
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       //Serial.println(digitalRead(CYLINDER_LOCK_PIN));
@@ -228,6 +260,7 @@ void run_state_machine(bool cannonTrigger){
       }
     break;
     case RECOVERY:
+      Serial.println("RECOVERY");
       // index unlocked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor off
@@ -244,6 +277,7 @@ void run_state_machine(bool cannonTrigger){
       }
     break;
     case RELOAD_UNLOCKED:
+      Serial.println("RELOAD_UNLOCKED");
       //index unlocked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_UNLOCKED);
       //Serial.println(digitalRead(FIRING_PLATE_PIN));
@@ -262,6 +296,7 @@ void run_state_machine(bool cannonTrigger){
       }
     break;
     case RELOAD_LOCKED:
+      Serial.println("RELOAD_LOCKED");
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       //Serial.println(digitalRead());
@@ -274,7 +309,7 @@ void run_state_machine(bool cannonTrigger){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
-      Serial.println(timer);
+      //Serial.println(timer);
       if(timer>300){
         state=PRESSURIZING;
       }
@@ -292,6 +327,7 @@ void run_state_machine(bool cannonTrigger){
       case STARTUP : Serial.println("Startup");break;;
       case PRESSURIZING : Serial.println("Pressurizing");break;;
       case IDLE : Serial.println("Idle");break;;
+      case DUMPPRESSURE : Serial.println("Dump Pressure");break;;
       case FIRING : Serial.println("Firing");break;;
       case RECOVERY : Serial.println("Recovery");break;;
       case RELOAD_UNLOCKED : Serial.println("Reload_unlocked");break;;
