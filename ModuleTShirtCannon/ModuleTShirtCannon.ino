@@ -27,19 +27,21 @@
 
 #define BUILT_IN_LED 13
 
-#define RADIO_IN_PIN 22
-//Normal pin is 22, messing around with it to try to get thte top working independently
-#define RADIO_OUT_PIN 23
+//RADIO INPUT 23
+#define RADIO_IN_PIN 23
 
-#define ELEVATION_ENCODER_PIN_1 0 //TODO Check that this is the correct pin number
-#define ELEVATION_ENCODER_PIN_2 11  //TODO Check that this is the correct pin number
+#define RADIO_OUT_PIN 22
+
+#define ELEVATION_ENCODER_PIN_1 11
+#define ELEVATION_ENCODER_PIN_2 15  
+#define ABSOLUTE_ENCODER_PIN 8 //pwm pin
 
 //Degrees measured from horizon
-#define ELEVATION_MIN_DEGREES 0
-#define ELEVATION_MAX_DEGREES 90
-#define ELEVATION_ENCODER_RANGE 4096
+#define ELEVATION_MIN_DEGREES 40
+#define ELEVATION_MAX_DEGREES -10
+#define ELEVATION_ENCODER_RANGE 1261
 
-// Named constants for solenoids
+  // Named constants for solenoids
 #define INDEX_LOCKED LOW
 #define INDEX_UNLOCKED HIGH
 
@@ -48,23 +50,24 @@
 #define FIRING_PIN_2_OPEN LOW
 #define FIRING_PIN_2_CLOSED HIGH
 
-#define FIRING_PLATE_OPEN HIGH
-#define FIRING_PLATE_CLOSED LOW
+#define FIRING_PLATE_OPEN LOW
+#define FIRING_PLATE_CLOSED HIGH
 
 //Constants for motors
 #define NEUTRAL_OUTPUT 1500
 #define FORWARD_OUTPUT 75//Increase Forward Output to Increase Motor Speeds
 
 //Radios
-PulsePositionOutput radioCannonOutput;
+//PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
 
 //PID for elevationServo
-MiniPID elevationPID = MiniPID(0.0,0.0,0.0);//TODO needs tuning
+MiniPID elevationPID = MiniPID(10,0.0,0.0);//TODO needs tuning
 
 //Encoder for the elevationServo
 Encoder elevationEncoder(ELEVATION_ENCODER_PIN_1, ELEVATION_ENCODER_PIN_2);
-
+//Current Position of the elevation 
+float currentAngle = 0.0;
 //Declare Motors
 Servo cylinderServo;
 Servo elevationServo;
@@ -77,6 +80,27 @@ elapsedMillis cannonHeartbeat;
 //Booleans
 bool cannonTrigger = false;
 bool pressureRelease = false;
+bool elevationAligned = false;
+
+//VARIABLES MUST BE VOLATILE TO BE USED IN AN INTERRUPT
+//Variable for tracking number of encoder samples
+volatile double numberOfSamples =10;
+//Variable for total time of all samples
+volatile float totalSampleTime =0.0;
+//Average sample time
+float averageSampleTime =0.0;
+
+//Read absolute encoder
+void readEncoder(){
+  //Discard the first sample from the encoder
+  if (numberOfSamples == 0){
+    numberOfSamples ++; 
+    return;
+  }
+  numberOfSamples ++;
+  //get the time for the sample and add that time to the total
+  //totalSampleTime = totalSampleTime + TODO: FIGURE OUT A WAY TO GET THE TIME;
+}
 
 void setup(){
   //Starts Serial For Debug
@@ -84,18 +108,20 @@ void setup(){
 
   //Setting Pin Modes
   pinMode(BUILT_IN_LED, OUTPUT);
-  //pinMode(INDEX_SWITCH_PIN, INPUT);
   pinMode(CYLINDER_LOCK_PIN, OUTPUT);
   pinMode(FIRING_PIN_1,OUTPUT);
   pinMode(FIRING_PIN_2, OUTPUT);
   pinMode(FIRING_PLATE_PIN,OUTPUT);
+  
 
   //Begin Reading Radio
   radioCannonInput.begin(RADIO_IN_PIN);
-  radioCannonOutput.begin(RADIO_OUT_PIN);
+  //radioCannonOutput.begin(RADIO_OUT_PIN);
 
   //Configure elevationPID
   elevationPID.setOutputLimits(-500,500);
+  elevationPID.setOutputLimits(-250,250);
+
   elevationPID.setMaxIOutput(20);//TODO needs tuning
 	//elevationPID.setSetpointRange(double angle per cycle)
   
@@ -104,8 +130,18 @@ void setup(){
   elevationServo.writeMicroseconds(NEUTRAL_OUTPUT);
   cylinderServo.attach(CYLINDER_MOTOR_PIN);
   cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
-  
-  //Wait to Allow Everything On Startup
+
+  //Interrupt for absolute encoder
+  attachInterrupt(digitalPinToInterrupt(8), readEncoder, CHANGE);
+  //If we have not gotten our home position do not progrees 
+  //Serial.println(numberOfSamples);
+  while (numberOfSamples != 10){}
+
+  //Average all of our samples
+  averageSampleTime= totalSampleTime/10;
+  //Serial.println(averageSampleTime);
+  currentAngle = 30;
+  //Wait to ensure everything gets time to respond
   delay(30); 
 }
 
@@ -115,36 +151,42 @@ void loop(){
   if (cannonHeartbeat > 1000){
     cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
-    
   }
-  //Checks if controller is off, if off abort loop
-  //  if (radioCannonInput.read(8)<200){
-  //    return;
-  //  }
+  //Check if radio is on
+  if (radioCannonInput.read(8)<200){
+    Serial.println("No Signal");
+    delay(1000);
+    return;
+  }
   //Read Radio Channels
   bool cannonTrigger = radioCannonInput.read(8) >= 1500;
   bool pressureRelease = radioCannonInput.read(7) >= 1400;
-  //Serial.println(radioCannonInput.read(8));
-  //Serial.println("  ");
-  //Serial.println (cannonTrigger);
   double targetAngle = radioCannonInput.read(3);
   
   //Map/Lerp the Radio Signal to Angles
   targetAngle = map(targetAngle,1000,2000,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
 
+  //Check if the positions  on the controller and the hardware are the same
+  if (targetAngle >= currentAngle - 5 && targetAngle <= currentAngle + 5){
+    elevationAligned = true;
+  }
+  if (elevationAligned == false){
+    Serial.println("Move the elevation to align with hardware");
+    return;
+  }
   //Read from Encoder
-  double sensorAngle = elevationEncoder.read(); 
-
+  currentAngle = elevationEncoder.read(); 
+  
   //Map/Lerp value from Encoder to Angles
-  sensorAngle = map(sensorAngle,0,ELEVATION_ENCODER_RANGE,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
-
+  currentAngle = map(currentAngle,0,ELEVATION_ENCODER_RANGE,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
+  //Serial.println(currentAngle);
+  
   //Write to elevationServo using PID
-  double angleMotorOutput=NEUTRAL_OUTPUT+elevationPID.getOutput(sensorAngle,targetAngle);
-  elevationServo.writeMicroseconds(angleMotorOutput);
+  double angleMotorOutput=NEUTRAL_OUTPUT+elevationPID.getOutput(currentAngle,targetAngle);
+  //elevationServo.writeMicroseconds(angleMotorOutput);
 
   //Run State Machine
   run_state_machine(cannonTrigger, pressureRelease);
-  Serial.println(cannonTrigger);
   delay(10);
 }
 
@@ -272,7 +314,7 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_UNLOCKED
-      if (timer > 3000){
+      if (timer > 1000){
         state=RELOAD_UNLOCKED;
       }
     break;
@@ -285,13 +327,13 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate open
       digitalWrite(FIRING_PLATE_PIN,FIRING_PLATE_OPEN);
-      delay(1000);
+
       
       //dump valve closed
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (timer > 200){
+      if (timer > 1200){
         state=RELOAD_LOCKED;
       }
     break;
@@ -310,7 +352,7 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
       //Serial.println(timer);
-      if(timer>300){
+      if(timer>500){
         state=PRESSURIZING;
       }
     break;
