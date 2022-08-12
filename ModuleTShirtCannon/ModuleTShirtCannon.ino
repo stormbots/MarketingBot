@@ -10,8 +10,8 @@
 
 
 //Degrees measured from horizon
-#define ELEVATION_MIN_DEGREES 40
-#define ELEVATION_MAX_DEGREES -10
+#define ELEVATION_MAX_DEGREES 40
+#define ELEVATION_MIN_DEGREES -10
 #define ELEVATION_ENCODER_RANGE 1261
 
   // Named constants for solenoids
@@ -39,8 +39,10 @@ MiniPID elevationPID = MiniPID(10,0.0,0.0);//TODO needs tuning
 
 //Encoder for the elevationServo
 Encoder elevationEncoder(ELEVATION_ENCODER_PIN_1, ELEVATION_ENCODER_PIN_2);
+
 //Current Position of the elevation 
 float currentAngle = 0.0;
+
 //Declare Motors
 Servo cylinderServo;
 Servo elevationServo;
@@ -55,26 +57,6 @@ bool cannonTrigger = false;
 bool pressureRelease = false;
 bool elevationAligned = false;
 
-//VARIABLES MUST BE VOLATILE TO BE USED IN AN INTERRUPT
-//Variable for tracking number of encoder samples
-volatile double numberOfSamples =10;
-//Variable for total time of all samples
-volatile float totalSampleTime =0.0;
-//Average sample time
-float averageSampleTime =0.0;
-
-//Read absolute encoder
-void readEncoder(){
-  //Discard the first sample from the encoder
-  if (numberOfSamples == 0){
-    numberOfSamples ++; 
-    return;
-  }
-  numberOfSamples ++;
-  //get the time for the sample and add that time to the total
-  //totalSampleTime = totalSampleTime + TODO: FIGURE OUT A WAY TO GET THE TIME;
-}
-
 void setup(){
   //Starts Serial For Debug
   Serial.begin(9600);// Keep at 9600 baum
@@ -86,88 +68,95 @@ void setup(){
   pinMode(FIRING_PIN_2, OUTPUT);
   pinMode(FIRING_PLATE_PIN,OUTPUT);
   
-
   //Begin Reading Radio
   radioCannonInput.begin(RADIO_IN_PIN);
   //radioCannonOutput.begin(RADIO_OUT_PIN);
 
-  //Configure elevationPID
-  elevationPID.setOutputLimits(-500,500);
-  elevationPID.setOutputLimits(-250,250);
+  //Configure elevationPID limits
+  elevationPID.setOutputLimits(-175,175);
+  elevationPID.setMaxIOutput(20);
 
-  elevationPID.setMaxIOutput(20);//TODO needs tuning
-	//elevationPID.setSetpointRange(double angle per cycle)
-  
-  //Set Motors to 0 On Startup
+  //Set Motors to 0 On Startup and attach servos to pins
   elevationServo.attach(ELEVATION_MOTOR_PIN);
   elevationServo.writeMicroseconds(NEUTRAL_OUTPUT);
   cylinderServo.attach(CYLINDER_MOTOR_PIN);
   cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
 
-  //Interrupt for absolute encoder
-  attachInterrupt(digitalPinToInterrupt(ABSOLUTE_ENCODER_PIN), readEncoder, CHANGE);
+ 
   //If we have not gotten our home position do not progrees 
-  //Serial.println(numberOfSamples);
-  while (numberOfSamples != 10){}
+  encoderHome();
+  currentAngle = getEncoderPosition();
+  elevationEncoder.write(currentAngle);
 
-  //Average all of our samples
-  averageSampleTime= totalSampleTime/10;
-  //Serial.println(averageSampleTime);
-  currentAngle = 30;
   //Wait to ensure everything gets time to respond
   delay(30); 
 }
 
 
 void loop(){
-  //Heartbeat
+  //Heartbeat LED
   if (cannonHeartbeat > 1000){
     cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
-  //Check if radio is on
+  
+  //Check if radio is connected
   if (radioCannonInput.read(8)<200){
     Serial.println("No Signal");
     delay(1000);
     return;
   }
+  
   //Read Radio Channels
-  bool cannonTrigger = radioCannonInput.read(8) >= 1500;
-  bool pressureRelease = radioCannonInput.read(7) >= 1400;
   double targetAngle = radioCannonInput.read(3);
+  bool cannonTrigger = radioCannonInput.read(7) >= 1500;
+  bool pressureReleaseLocked = false;
+  bool pressureReleaseUnlocked =false;
+  //only move to unlocked if switch is in the middle position
+  if (radioCannonInput.read(8) >= 1600){
+    pressureReleaseUnlocked = true;
+  }
+  else if (radioCannonInput.read(8)>=1300){
+    pressureReleaseLocked = true;
+  }
   
   //Map/Lerp the Radio Signal to Angles
   targetAngle = map(targetAngle,1000,2000,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
 
-  //Check if the positions  on the controller and the hardware are the same
-  if (targetAngle >= currentAngle - 5 && targetAngle <= currentAngle + 5){
+  //Check if the positions  on the controller and the hardware are similar
+  if (targetAngle >= currentAngle - 10 && targetAngle <= currentAngle + 10){
     elevationAligned = true;
   }
   if (elevationAligned == false){
-    Serial.println("Move the elevation to align with hardware");
+    //Serial.println("Move the elevation to align with hardware");
+    Serial.println("Incorrect Alignment");
+    Serial.println(currentAngle);
     return;
   }
-  //Read from Encoder
+  
+  //Read our position from Encoder
   currentAngle = elevationEncoder.read(); 
   
   //Map/Lerp value from Encoder to Angles
-  currentAngle = map(currentAngle,0,ELEVATION_ENCODER_RANGE,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
-  //Serial.println(currentAngle);
+  currentAngle = map(currentAngle,0,ELEVATION_ENCODER_RANGE,ELEVATION_MAX_DEGREES,ELEVATION_MIN_DEGREES);
   
-  //Write to elevationServo using PID
+  //Write to elevationServo using PID and the current and target angles
   double angleMotorOutput=NEUTRAL_OUTPUT+elevationPID.getOutput(currentAngle,targetAngle);
-  //elevationServo.writeMicroseconds(angleMotorOutput);
-
+  elevationServo.writeMicroseconds(angleMotorOutput);
+  
   //Run State Machine
-  run_state_machine(cannonTrigger, pressureRelease);
+  run_state_machine(cannonTrigger, pressureReleaseUnlocked,pressureReleaseLocked);
+  
   delay(10);
 }
 
+//States in the state machine
 enum State{
   STARTUP,
   PRESSURIZING,
   IDLE,
-  DUMPPRESSURE,
+  DUMPPRESSURE_UNLOCKED,
+  DUMPPRESSURE_LOCKED,
   FIRING,
   RECOVERY,
   RELOAD_UNLOCKED,
@@ -178,7 +167,7 @@ enum State{
 enum State state = STARTUP;
 enum State last_state=RESET;
 
-void run_state_machine(bool cannonTrigger, bool pressureRelease){
+void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pressureReleaseLocked){
   switch(state){
     case STARTUP:
       Serial.println("STARTUP");
@@ -196,8 +185,6 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       
       state=PRESSURIZING;
-      
-      
     break;
     case PRESSURIZING:
       Serial.println("PRESSURIZING");
@@ -234,12 +221,36 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
         state = FIRING;
       }
       //if the pressure release is swithed move to dump pressure
-      else if(pressureRelease){
-        state=DUMPPRESSURE;
+      else if(pressureReleaseUnlocked){
+        state=DUMPPRESSURE_UNLOCKED;
+      }
+      else if (pressureReleaseLocked){
+        state=DUMPPRESSURE_LOCKED;
       }
     break;
-    case DUMPPRESSURE:
-      Serial.println("DUMPPRESSURE");
+    case DUMPPRESSURE_UNLOCKED:
+      Serial.println("DUMPPRESSURE_UNLOCKED");
+
+      //index locked
+      digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
+      //Revolver motor off
+      cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
+      //firing plate opened
+      digitalWrite(FIRING_PLATE_PIN, FIRING_PLATE_OPEN);
+      //dump valve closed 
+      digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
+      digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
+      
+      //if trigger is not pressed and pressure release is turned back off return to idle
+      if (cannonTrigger == false && pressureReleaseUnlocked == false){
+        state = IDLE;
+      }
+      else if (pressureReleaseLocked == true){
+        state = DUMPPRESSURE_LOCKED;
+      }
+    break;
+    case DUMPPRESSURE_LOCKED:
+      Serial.println("DUMPPRESSURE_LOCKED");
 
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
@@ -252,8 +263,11 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
       
       //if trigger is not pressed and pressure release is turned back off return to idle
-      if (cannonTrigger == false && pressureRelease == false){
+      if (cannonTrigger == false && pressureReleaseLocked == false){
         state = IDLE;
+      }
+      else if (pressureReleaseUnlocked == true){
+        state = DUMPPRESSURE_UNLOCKED;
       }
     break;
     case FIRING:
@@ -306,7 +320,7 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (timer > 1200){
+      if (timer > 600){
         state=RELOAD_LOCKED;
       }
     break;
@@ -325,7 +339,7 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
       //Serial.println(timer);
-      if(timer>500){
+      if(timer>800){
         state=PRESSURIZING;
       }
     break;
@@ -342,7 +356,8 @@ void run_state_machine(bool cannonTrigger, bool pressureRelease){
       case STARTUP : Serial.println("Startup");break;;
       case PRESSURIZING : Serial.println("Pressurizing");break;;
       case IDLE : Serial.println("Idle");break;;
-      case DUMPPRESSURE : Serial.println("Dump Pressure");break;;
+      case DUMPPRESSURE_UNLOCKED : Serial.println("Dump Pressure");break;;
+      case DUMPPRESSURE_LOCKED : Serial.println("Dump Pressure");break;;
       case FIRING : Serial.println("Firing");break;;
       case RECOVERY : Serial.println("Recovery");break;;
       case RELOAD_UNLOCKED : Serial.println("Reload_unlocked");break;;
