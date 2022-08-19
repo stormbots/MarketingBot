@@ -99,17 +99,20 @@ void loop(){
     cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
-  
+
+  //Read our position from Encoder
+  currentAngle = elevationEncoder.read(); 
+
   //Check if radio is connected
   if (radioCannonInput.read(8)<200){
     Serial.println("No Signal");
-    delay(100);
+    delay(500);
     return;
   }
   
   //Read Radio Channels
   double targetAngle = radioCannonInput.read(3);
-  bool cannonTrigger = radioCannonInput.read(7) >= 1500;
+  bool cannonTrigger = radioCannonInput.read(7) >= 1600;
   bool pressureReleaseLocked = false;
   bool pressureReleaseUnlocked =false;
   //only move to unlocked if switch is in the middle position
@@ -133,9 +136,6 @@ void loop(){
     Serial.println(currentAngle);
     return;
   }
-  
-  //Read our position from Encoder
-  currentAngle = elevationEncoder.read(); 
   
   //Map/Lerp value from Encoder to Angles
   currentAngle = map(currentAngle,0,ELEVATION_ENCODER_RANGE,ELEVATION_MAX_DEGREES,ELEVATION_MIN_DEGREES);
@@ -199,9 +199,9 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       //Not Firing
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
-    
+
       //If not 
-      if (cannonTrigger == false && timer>3000){
+      if (cannonTrigger == false && timer>3000+5000){
         state=IDLE;
       }
     break;
@@ -301,7 +301,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_UNLOCKED
-      if (timer > 5000){
+      if (timer > 2000){
         state=RELOAD_UNLOCKED;
       }
     break;
