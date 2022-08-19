@@ -103,7 +103,7 @@ void loop(){
   //Check if radio is connected
   if (radioCannonInput.read(8)<200){
     Serial.println("No Signal");
-    delay(1000);
+    delay(100);
     return;
   }
   
@@ -170,7 +170,7 @@ enum State last_state=RESET;
 void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pressureReleaseLocked){
   switch(state){
     case STARTUP:
-      Serial.println("STARTUP");
+//      Serial.println("STARTUP");
       //The Index should be Locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       
@@ -187,7 +187,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       state=PRESSURIZING;
     break;
     case PRESSURIZING:
-      Serial.println("PRESSURIZING");
+//      Serial.println("PRESSURIZING");
 
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
@@ -206,7 +206,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       }
     break;
     case IDLE:
-      Serial.println("IDLE");
+//      Serial.println("IDLE");
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       //revolver motor off
@@ -229,9 +229,9 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       }
     break;
     case DUMPPRESSURE_UNLOCKED:
-      Serial.println("DUMPPRESSURE_UNLOCKED");
+//      Serial.println("DUMPPRESSURE_UNLOCKED");
 
-      //index locked
+      //index unlocked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
       //Revolver motor off
       cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
@@ -250,7 +250,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       }
     break;
     case DUMPPRESSURE_LOCKED:
-      Serial.println("DUMPPRESSURE_LOCKED");
+//      Serial.println("DUMPPRESSURE_LOCKED");
 
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
@@ -271,7 +271,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       }
     break;
     case FIRING:
-      Serial.println("FIRING");
+//      Serial.println("FIRING");
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       //Serial.println(digitalRead(CYLINDER_LOCK_PIN));
@@ -289,7 +289,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       }
     break;
     case RECOVERY:
-      Serial.println("RECOVERY");
+//      Serial.println("RECOVERY");
       // index unlocked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor off
@@ -301,12 +301,12 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_UNLOCKED
-      if (timer > 1000){
+      if (timer > 5000){
         state=RELOAD_UNLOCKED;
       }
     break;
     case RELOAD_UNLOCKED:
-      Serial.println("RELOAD_UNLOCKED");
+//      Serial.println("RELOAD_UNLOCKED");
       //index unlocked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_UNLOCKED);
       //Serial.println(digitalRead(FIRING_PLATE_PIN));
@@ -325,7 +325,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       }
     break;
     case RELOAD_LOCKED:
-      Serial.println("RELOAD_LOCKED");
+     //Serial.println("RELOAD_LOCKED");
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_LOCKED);
       //Serial.println(digitalRead());
