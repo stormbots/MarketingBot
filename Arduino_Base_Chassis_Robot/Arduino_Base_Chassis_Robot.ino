@@ -1,4 +1,4 @@
-//Radio, heartbeat, and motor libraries
+  //Radio, heartbeat, and motor libraries
 #include <PulsePosition.h>
 #include <elapsedMillis.h>
 #include <Servo.h>
@@ -29,6 +29,8 @@ elapsedMillis heartbeat;
 //Declare Motors
 Servo motorLeft;
 Servo motorRight;
+
+
 
 void setup() {
   //Begging Serial log
@@ -90,25 +92,45 @@ void loop() {
   //as these may be modified by Chassis
   radioOutput.write(2,throttleValue);
   radioOutput.write(1,turningValue);
-  radioOutput.write(7,shiftValue);
+  radioOutput.write(6,shiftValue);
 
   //Arcade Drive Logic//
-  turningValue = map(turningValue,1000,2000, 500,-500);
-  
+  turningValue = map(turningValue,1000,2000, -500,500);
+  throttleValue = map(throttleValue, 1000,2000,2000,1000);
   leftMotorSpeed= throttleValue + turningValue;
-  rightMotorSpeed = throttleValue - turningValue; 
-  
+  rightMotorSpeed = throttleValue - turningValue;   
   {
     //convert our ranges
     float vLeft  = map(leftMotorSpeed,1000,2000,-1,1);  
     float vRight = map(rightMotorSpeed,1000,2000,-1,1);    
-    float vMax = abs(max(vLeft,vRight));    
+    float vMax = max(abs(vLeft),abs(vRight));
     if(vMax > 1){
       leftMotorSpeed =  map(vLeft/vMax,-1,1,1000,2000);
       rightMotorSpeed =  map(vRight/vMax,-1,1,1000,2000);
     }    
     leftMotorSpeed =  map(leftMotorSpeed,1000,2000,2000,1000);
   }
+  
+
+//  //Convert from milliseconds to easy to math values
+//  turningValue = map(turningValue, 1000,2000, -1, 1);
+//  throttleValue = map(throttleValue,1000,2000,-1,1);
+//
+//  //Pythagorean theorem to get our magnitude
+//  double magnitude = sqrt(sq(turningValue)+sq(throttleValue));
+//  Serial.println(magnitude);
+//  if (magnitude >1){
+//    throttleValue /= magnitude;
+//    turningValue /= magnitude;
+//  }
+//
+//  //Add turning bias to our magnitude
+//  leftMotorSpeed = magnitude + turningValue;
+//  rightMotorSpeed = magnitude - turningValue;
+//  
+//  //Convert from -1 and 1 to milliseconds
+//  leftMotorSpeed = map(leftMotorSpeed, -1,1,1000,2000);
+//  rightMotorSpeed = map(rightMotorSpeed, -1,1,1000,2000);
   
   /* Shift depending on switch*/
   if (shiftValue <= 1500){
