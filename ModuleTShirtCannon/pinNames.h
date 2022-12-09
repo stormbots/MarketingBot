@@ -14,7 +14,7 @@
 
 //Empty Pins for Controls Use
 //#define TERM_AUX_1 18
-//#define TERM_AUX_2 20
+#define SIREN_PIN 20
 //#define TERM_AUX_3 21
 
 #define BUILT_IN_LED 13
