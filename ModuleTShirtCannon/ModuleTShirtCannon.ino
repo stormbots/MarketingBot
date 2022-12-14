@@ -1,39 +1,52 @@
- //Libraries 
+//Libraries 
+//PID, used for precise motor control on the elevation
 #include "MiniPID.h"
+//Timer
 #include <elapsedMillis.h>
+//Radio library
 #include <PulsePosition.h>
-#include <Bounce.h>
+//Encoder library, used for elevation
 #include <Encoder.h>
+//Used to control all of the motors on the bot
 #include <Servo.h>
+//Subfiles
 #include "PinNames.h"
 #include "encoderHoming.h"
 
+//-----------------------------------//
+//All pin declarations are in the PinNames subfile
+//-----------------------------------//
 
-//Degrees measured from horizon
+//Limits for the elevation motor in degrees measured from horizon
 #define ELEVATION_MAX_DEGREES 40
 #define ELEVATION_MIN_DEGREES -10
+
+//Range in encoder ticks
 #define ELEVATION_ENCODER_RANGE 1261
 
-  // Named constants for solenoids
+// Named constants for solenoids
+//The Index is the pin that goes up and down to lock the cylinder in place
 #define INDEX_LOCKED LOW
 #define INDEX_UNLOCKED HIGH
-
+//The firing pin is the solenoid that fires the main cannon
 #define FIRING_PIN_1_OPEN LOW
 #define FIRING_PIN_1_CLOSED HIGH
 #define FIRING_PIN_2_OPEN LOW
 #define FIRING_PIN_2_CLOSED HIGH
-
+//The frining plate is the part that moves forwards and backwards to seal the firing chamber
 #define FIRING_PLATE_OPEN LOW
 #define FIRING_PLATE_CLOSED HIGH
 
-//#define SIREN_ON HIGH
-//#define SIREN_OFF LOW
-
 //Constants for motors
+//The range for motors is from 1000 to 2000 with 1000 being 100% backwards and 2000 being 100% forwards. Thus, 1500 is neutral or no movement.
 #define NEUTRAL_OUTPUT 1500
-#define FORWARD_OUTPUT 100//Increase Forward Output to Increase Motor Speeds
+//Increase Forward Output to Increase Motor Speeds, forward output is added to neutral output to produce movement
+#define FORWARD_OUTPUT 100
 
 //Radios
+//This use the pulse position library to creat inputs and outputs for our radio.
+//You can access documentation for this on the PJRC website
+//The output is commented out in this files because this module does not pass the radio signal on to another teensy.
 //PulsePositionOutput radioCannonOutput;
 PulsePositionInput radioCannonInput;
 
@@ -43,21 +56,23 @@ MiniPID elevationPID = MiniPID(10,0.0,0.0);
 //Encoder for the elevationServo
 Encoder elevationEncoder(ELEVATION_ENCODER_PIN_1, ELEVATION_ENCODER_PIN_2);
 
-//Current Position of the elevation 
+//Current Position of the elevation in degrees
 float currentAngle = 0.0;
 
-//Declare Motors
+//Declare Motors using servo library
 Servo cylinderServo;
 Servo elevationServo;
 
 //Timers
-elapsedMillis verticalDriveTimer;
-elapsedMillis timer;
+//Timer for state machine
+elapsedMillis stateMachineTimer;
+//Timer for the LED on the teensy;
 elapsedMillis cannonHeartbeat;
 
 //Booleans
+//Boolean for if the controller switch that controls firing is off(false) or on(true)
 bool cannonTrigger = false;
-bool pressureRelease = false;
+//Boolean for checking if the controller and the elevation of the cannon are aligned
 bool elevationAligned = false;
 
 void setup(){
@@ -65,14 +80,14 @@ void setup(){
   Serial.begin(9600);// Keep at 9600 baud
 
   //Setting Pin Modes
+  //In INPUT by default, needs to be in OUTPUT for solenoids and the inbuilt LED
   pinMode(BUILT_IN_LED, OUTPUT);
   pinMode(CYLINDER_LOCK_PIN, OUTPUT);
   pinMode(FIRING_PIN_1,OUTPUT);
   pinMode(FIRING_PIN_2, OUTPUT);
   pinMode(FIRING_PLATE_PIN,OUTPUT);
-  //pinMode(SIREN_PIN, OUTPUT);
   
-  //Begin Reading Radio
+  //Begin reading the radio using the radio pins
   radioCannonInput.begin(RADIO_IN_PIN);
   //radioCannonOutput.begin(RADIO_OUT_PIN);
 
@@ -80,16 +95,17 @@ void setup(){
   elevationPID.setOutputLimits(-175,175);
   elevationPID.setMaxIOutput(20);
 
-  //Set Motors to 0 On Startup and attach servos to pins
+  //Set Motors to not move on startup and attach servos to pins
   elevationServo.attach(ELEVATION_MOTOR_PIN);
   elevationServo.writeMicroseconds(NEUTRAL_OUTPUT);
   cylinderServo.attach(CYLINDER_MOTOR_PIN);
   cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
 
- 
-  //If we have not gotten our home position do not progrees 
+  //Use the encoderHome subfile to read the absolute encoder
   encoderHome();
+  //Read the encoder from the subfile
   currentAngle = getEncoderPosition();
+  //set the encoder to the previously read position
   elevationEncoder.write(currentAngle);
 
   //Wait to ensure everything gets time to respond
@@ -118,8 +134,8 @@ void loop(){
   double targetAngle = radioCannonInput.read(3);
   bool cannonTrigger = radioCannonInput.read(7) >= 1600;
   //bool sirenTrigger = radioCannonInput.read(6)>= 1600;
-  bool pressureReleaseLocked = false;
-  bool pressureReleaseUnlocked =false;
+  bool plateReleaseLocked = false;
+  bool plateReleaseUnlocked =false;
 
   //Turn siren on and off 
   //if(sirenTrigger){
@@ -132,10 +148,10 @@ void loop(){
   
   //only move to unlocked if switch is in the middle position
   if (radioCannonInput.read(8) >= 1600){
-    pressureReleaseUnlocked = true;
+    plateReleaseUnlocked = true;
   }
   else if (radioCannonInput.read(8)<=1300){
-    pressureReleaseLocked = true;
+    plateReleaseLocked = true;
   }
   
   //Map/Lerp the Radio Signal to Angles
@@ -163,7 +179,7 @@ void loop(){
   elevationServo.writeMicroseconds(angleMotorOutput);
   
   //Run State Machine
-  run_state_machine(cannonTrigger, pressureReleaseUnlocked,pressureReleaseLocked);
+  run_state_machine(cannonTrigger, plateReleaseUnlocked,plateReleaseLocked);
   
   delay(10);
 }
@@ -173,9 +189,9 @@ enum State{
   STARTUP,
   PRESSURIZING,
   IDLE,
-  DUMPPRESSURE_UNLOCKED,
-  DUMPPRESSURE_LOCKED_RELATCHING,//TODO IMPLEMENT, MOTOR ON
-  DUMPPRESSURE_LOCKED,
+  PLATE_RELEASE_UNLOCKED,
+  PLATE_RELEASE_LOCKED_RELATCHING,//TODO IMPLEMENT, MOTOR ON
+  PLATE_RELEASE_LOCKED,
   FIRING,
   RECOVERY,
   RELOAD_UNLOCKED,
@@ -186,7 +202,7 @@ enum State{
 enum State state = STARTUP;
 enum State last_state=RESET;
 
-void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pressureReleaseLocked){
+void run_state_machine(bool cannonTrigger, bool plateReleaseUnlocked, bool plateReleaseLocked){
   switch(state){
     case STARTUP:
 //      Serial.println("STARTUP");
@@ -220,7 +236,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
 
       //If not 
-      if (cannonTrigger == false && timer>3000+5000){
+      if (cannonTrigger == false && stateMachineTimer>1000){
         state=IDLE;
       }
     break;
@@ -240,15 +256,15 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
         state = FIRING;
       }
       //if the pressure release is swithed move to dump pressure
-      else if(pressureReleaseUnlocked){
-        state=DUMPPRESSURE_UNLOCKED;
+      else if(plateReleaseUnlocked){
+        state=PLATE_RELEASE_UNLOCKED;
       }
-      else if (pressureReleaseLocked){
-        state=DUMPPRESSURE_LOCKED_RELATCHING;
+      else if (plateReleaseLocked){
+        state=PLATE_RELEASE_LOCKED_RELATCHING;
       }
     break;
-    case DUMPPRESSURE_UNLOCKED:
-//      Serial.println("DUMPPRESSURE_UNLOCKED");
+    case PLATE_RELEASE_UNLOCKED:
+//      Serial.println("PLATE_RELEASE_UNLOCKED");
 
       //index unlocked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
@@ -261,14 +277,14 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
       
       //if trigger is not pressed and pressure release is turned back off return to idle
-      if (cannonTrigger == false && pressureReleaseUnlocked == false){
+      if (cannonTrigger == false && plateReleaseUnlocked == false){
         state = IDLE;
       }
-      else if (pressureReleaseLocked == true){
-        state = DUMPPRESSURE_LOCKED_RELATCHING;
+      else if (plateReleaseLocked == true){
+        state = PLATE_RELEASE_LOCKED_RELATCHING;
       }
     break;
-    case DUMPPRESSURE_LOCKED_RELATCHING:
+    case PLATE_RELEASE_LOCKED_RELATCHING:
       //index locked 
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
       //Revolver motor on
@@ -278,12 +294,12 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       //dump valve closed 
       digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
-      if (timer >400){
-        state=DUMPPRESSURE_LOCKED;
+      if (stateMachineTimer >400){
+        state=PLATE_RELEASE_LOCKED;
       }
     break;
-    case DUMPPRESSURE_LOCKED:
-      // Serial.println("DUMPPRESSURE_LOCKED");
+    case PLATE_RELEASE_LOCKED:
+      // Serial.println("PLATE_RELEASE_LOCKED");
 
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
@@ -296,12 +312,12 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
       
       //if trigger is not pressed and pressure release is moved to middle off return to idle
-      if (cannonTrigger == false && pressureReleaseLocked == false){
+      if (cannonTrigger == false && plateReleaseLocked == false){
         state = IDLE;
       }
       //If pressure release is moved to bottom position move to unlock
-      else if (pressureReleaseUnlocked == true){
-        state = DUMPPRESSURE_UNLOCKED;
+      else if (plateReleaseUnlocked == true){
+        state = PLATE_RELEASE_UNLOCKED;
       }
     break;
     case FIRING:
@@ -317,8 +333,8 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       //dump valve open
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_OPEN);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_CLOSED);
-      // if the timer expires advance to RECOVERY
-      if (timer > 1000){
+      // if the stateMachineTimer expires advance to RECOVERY
+      if (stateMachineTimer > 1000){
         state = RECOVERY;
       }
     break;
@@ -335,7 +351,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_UNLOCKED
-      if (timer > 2000){
+      if (stateMachineTimer > 1000){
         state=RELOAD_UNLOCKED;
       }
     break;
@@ -354,7 +370,7 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (timer > 400){
+      if (stateMachineTimer > 400){
         state=RELOAD_LOCKED;
       }
     break;
@@ -372,8 +388,8 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       //if the indexSwitch is tripped or time expires move to PRESSURIZING
-      //Serial.println(timer);
-      if(timer>1000){
+      //Serial.println(stateMachineTimer);
+      if(stateMachineTimer>1000){
         state=PRESSURIZING;
       }
     break;
@@ -390,15 +406,16 @@ void run_state_machine(bool cannonTrigger, bool pressureReleaseUnlocked, bool pr
       case STARTUP : Serial.println("Startup");break;;
       case PRESSURIZING : Serial.println("Pressurizing");break;;
       case IDLE : Serial.println("Idle");break;;
-      case DUMPPRESSURE_UNLOCKED : Serial.println("Dump Pressure");break;;
-      case DUMPPRESSURE_LOCKED : Serial.println("Dump Pressure");break;;
+      case PLATE_RELEASE_UNLOCKED : Serial.println("Dump Pressure Unlocked");break;;
+      case PLATE_RELEASE_LOCKED_RELATCHING : Serial.println("Dump Pressure Locked Relatching");break;;
+      case PLATE_RELEASE_LOCKED : Serial.println("Dump Pressure Locked");break;;
       case FIRING : Serial.println("Firing");break;;
       case RECOVERY : Serial.println("Recovery");break;;
       case RELOAD_UNLOCKED : Serial.println("Reload_unlocked");break;;
       case RELOAD_LOCKED : Serial.println("Reload_locked");break;;
       case RESET : Serial.println("reset");break;;
     }
-    timer=0;
+    stateMachineTimer=0;
     last_state=state;
   }
 }
