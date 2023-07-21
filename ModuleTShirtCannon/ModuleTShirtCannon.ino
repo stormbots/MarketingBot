@@ -194,9 +194,10 @@ enum State{
   STARTUP,
   PRESSURIZING,
   IDLE,
-  PLATE_RELEASE_UNLOCKED,
-  PLATE_RELEASE_LOCKED_RELATCHING,//TODO IMPLEMENT, MOTOR ON
-  PLATE_RELEASE_LOCKED,
+  IDLE_READY,
+  MANUAL_LOADING,
+  MANUAL_RELOAD_UNLOCKED,//TODO IMPLEMENT, MOTOR ON
+  MANUAL_RELOAD_LOCKED,
   FIRING,
   RECOVERY,
   RELOAD_UNLOCKED,
@@ -256,16 +257,26 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       //dump valve closed
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
+
+      //For safety: Always ensure users undo the fire
+      // switch between state machine loops.
+      // This should be the _only_ transition out of idle
+      if (cannonTrigger == false){
+        state = IDLE_READY;
+      }
+    break;
+    case IDLE_READY:
+      // This should be the only state with no control/device logic
       // if the trigger for the cannon is pressed move to FIRING
       if (cannonTrigger){
         state = FIRING;
       }
       //if the pressure release is swithed move to dump pressure
       else if(manualReloadSwitch == UNLOCKED){
-        state=PLATE_RELEASE_UNLOCKED;
+        state=MANUAL_LOADING;
       }
     break;
-    case PLATE_RELEASE_UNLOCKED:
+    case MANUAL_LOADING:
       //index unlocked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
       //Revolver motor off
@@ -277,10 +288,10 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
       
       if (manualReloadSwitch == DONE){
-        state = PLATE_RELEASE_LOCKED_RELATCHING;
+        state = MANUAL_RELOAD_UNLOCKED;
       }
     break;
-    case PLATE_RELEASE_LOCKED_RELATCHING:
+    case MANUAL_RELOAD_UNLOCKED:
       //index locked 
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
       //Revolver motor on
@@ -291,12 +302,10 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
       if (stateMachineTimer >400){
-        state=PLATE_RELEASE_LOCKED;
+        state=MANUAL_RELOAD_LOCKED;
       }
     break;
-    case PLATE_RELEASE_LOCKED:
-      // Serial.println("PLATE_RELEASE_LOCKED");
-
+    case MANUAL_RELOAD_LOCKED:
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
       //Revolver motor off
@@ -331,7 +340,6 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       }
     break;
     case RECOVERY:
-//      Serial.println("RECOVERY");
       // index unlocked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_UNLOCKED);
       //revolver motor off
@@ -348,7 +356,6 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       }
     break;
     case RELOAD_UNLOCKED:
-//      Serial.println("RELOAD_UNLOCKED");
       //index unlocked
       digitalWrite(CYLINDER_LOCK_PIN,INDEX_UNLOCKED);
       //Serial.println(digitalRead(FIRING_PLATE_PIN));
@@ -398,9 +405,10 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       case STARTUP : Serial.println("Startup");break;;
       case PRESSURIZING : Serial.println("Pressurizing");break;;
       case IDLE : Serial.println("Idle");break;;
-      case PLATE_RELEASE_UNLOCKED : Serial.println("Dump Pressure Unlocked");break;;
-      case PLATE_RELEASE_LOCKED_RELATCHING : Serial.println("Dump Pressure Locked Relatching");break;;
-      case PLATE_RELEASE_LOCKED : Serial.println("Dump Pressure Locked");break;;
+      case IDLE_READY : Serial.println("Idle_ready");break;;
+      case MANUAL_LOADING : Serial.println("Dump Pressure Unlocked");break;;
+      case MANUAL_RELOAD_UNLOCKED : Serial.println("Dump Pressure Locked Relatching");break;;
+      case MANUAL_RELOAD_LOCKED : Serial.println("Dump Pressure Locked");break;;
       case FIRING : Serial.println("Firing");break;;
       case RECOVERY : Serial.println("Recovery");break;;
       case RELOAD_UNLOCKED : Serial.println("Reload_unlocked");break;;
