@@ -75,6 +75,12 @@ bool cannonTrigger = false;
 //Boolean for checking if the controller and the elevation of the cannon are aligned
 bool elevationAligned = false;
 
+enum ManualReloadSwitch{
+  DONE,
+  UNLOCKED,
+  UNUSED
+} ;
+
 void setup(){
   //Starts Serial For Debug
   Serial.begin(9600);// Keep at 9600 baud
@@ -134,8 +140,7 @@ void loop(){
   double targetAngle = radioCannonInput.read(3);
   bool cannonTrigger = radioCannonInput.read(7) >= 1600;
   //bool sirenTrigger = radioCannonInput.read(6)>= 1600;
-  bool plateReleaseLocked = false;
-  bool plateReleaseUnlocked =false;
+  ManualReloadSwitch manualReloadSwitch = DONE;
 
   //Turn siren on and off 
   //if(sirenTrigger){
@@ -148,10 +153,10 @@ void loop(){
   
   //only move to unlocked if switch is in the middle position
   if (radioCannonInput.read(8) >= 1600){
-    plateReleaseUnlocked = true;
+    manualReloadSwitch = UNLOCKED;
   }
   else if (radioCannonInput.read(8)<=1300){
-    plateReleaseLocked = true;
+    manualReloadSwitch = UNUSED;
   }
   
   //Map/Lerp the Radio Signal to Angles
@@ -179,7 +184,7 @@ void loop(){
   elevationServo.writeMicroseconds(angleMotorOutput);
   
   //Run State Machine
-  run_state_machine(cannonTrigger, plateReleaseUnlocked,plateReleaseLocked);
+  run_state_machine(cannonTrigger,manualReloadSwitch);
   
   delay(10);
 }
@@ -202,7 +207,7 @@ enum State{
 enum State state = STARTUP;
 enum State last_state=RESET;
 
-void run_state_machine(bool cannonTrigger, bool plateReleaseUnlocked, bool plateReleaseLocked){
+void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch){
   switch(state){
     case STARTUP:
 //      Serial.println("STARTUP");
@@ -256,16 +261,11 @@ void run_state_machine(bool cannonTrigger, bool plateReleaseUnlocked, bool plate
         state = FIRING;
       }
       //if the pressure release is swithed move to dump pressure
-      else if(plateReleaseUnlocked){
+      else if(manualReloadSwitch == UNLOCKED){
         state=PLATE_RELEASE_UNLOCKED;
-      }
-      else if (plateReleaseLocked){
-        state=PLATE_RELEASE_LOCKED_RELATCHING;
       }
     break;
     case PLATE_RELEASE_UNLOCKED:
-//      Serial.println("PLATE_RELEASE_UNLOCKED");
-
       //index unlocked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
       //Revolver motor off
@@ -276,17 +276,13 @@ void run_state_machine(bool cannonTrigger, bool plateReleaseUnlocked, bool plate
       digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
       
-      //if trigger is not pressed and pressure release is turned back off return to idle
-      if (cannonTrigger == false && plateReleaseUnlocked == false){
-        state = IDLE;
-      }
-      else if (plateReleaseLocked == true){
+      if (manualReloadSwitch == DONE){
         state = PLATE_RELEASE_LOCKED_RELATCHING;
       }
     break;
     case PLATE_RELEASE_LOCKED_RELATCHING:
       //index locked 
-      digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
+      digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
       //Revolver motor on
       cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate opened
@@ -304,7 +300,7 @@ void run_state_machine(bool cannonTrigger, bool plateReleaseUnlocked, bool plate
       //index locked
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_LOCKED);
       //Revolver motor off
-      cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
+      cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
       //firing plate opened
       digitalWrite(FIRING_PLATE_PIN, FIRING_PLATE_OPEN);
       //dump valve closed 
@@ -312,12 +308,8 @@ void run_state_machine(bool cannonTrigger, bool plateReleaseUnlocked, bool plate
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
       
       //if trigger is not pressed and pressure release is moved to middle off return to idle
-      if (cannonTrigger == false && plateReleaseLocked == false){
+      if (stateMachineTimer>1000){
         state = IDLE;
-      }
-      //If pressure release is moved to bottom position move to unlock
-      else if (plateReleaseUnlocked == true){
-        state = PLATE_RELEASE_UNLOCKED;
       }
     break;
     case FIRING:
