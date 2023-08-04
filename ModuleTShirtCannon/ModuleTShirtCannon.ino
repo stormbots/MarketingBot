@@ -5,13 +5,14 @@
 #include <elapsedMillis.h>
 //Radio library
 #include <PulsePosition.h>
-//Encoder library, used for elevation
+//Encoder library
 #include <Encoder.h>
 //Used to control all of the motors on the bot
 #include <Servo.h>
 //Subfiles
 #include "PinNames.h"
-#include "encoderHoming.h"
+#include "./RotationEncoder.h"
+#include "./ElevationEncoder.h"
 
 //-----------------------------------//
 //All pin declarations are in the PinNames subfile
@@ -19,10 +20,8 @@
 
 //Limits for the elevation motor in degrees measured from horizon
 #define ELEVATION_MAX_DEGREES 40
-#define ELEVATION_MIN_DEGREES -10
+#define ELEVATION_MIN_DEGREES 5
 
-//Range in encoder ticks
-#define ELEVATION_ENCODER_RANGE 1261
 
 // Named constants for solenoids
 //The Index is the pin that goes up and down to lock the cylinder in place
@@ -53,8 +52,6 @@ PulsePositionInput radioCannonInput;
 //PID for elevationServo
 MiniPID elevationPID = MiniPID(10,0.0,0.0);
 
-//Encoder for the elevationServo
-Encoder elevationEncoder(ELEVATION_ENCODER_PIN_1, ELEVATION_ENCODER_PIN_2);
 
 //Current Position of the elevation in degrees
 float currentAngle = 0.0;
@@ -108,12 +105,8 @@ void setup(){
   cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
 
   //Use the encoderHome subfile to read the absolute encoder
-  encoderHome();
-  //Read the encoder from the subfile
-  currentAngle = getEncoderPosition();
-  //set the encoder to the previously read position
-  elevationEncoder.write(currentAngle);
-
+  ConfigElevationPWM(ABSOLUTE_ENCODER_PIN);
+  
   //Wait to ensure everything gets time to respond
   delay(30); 
 }
@@ -125,16 +118,15 @@ void loop(){
     cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
-
-  //Read our position from Encoder
-  currentAngle = elevationEncoder.read(); 
-
   //Check if radio is connected
-  if (radioCannonInput.read(8)<200){
-    Serial.println("No Signal");
-    delay(500);
-    return;
-  }
+//  if (radioCannonInput.read(8)<200){
+//    Serial.println("No Signal");
+//    delay(500);
+//    return;
+//  }
+
+   //Read the encoder from the subfile
+  currentAngle = ReadElevationDegrees();
   
   //Read Radio Channels
   double targetAngle = radioCannonInput.read(3);
@@ -165,19 +157,16 @@ void loop(){
   
   
   //Check if the positions  on the controller and the hardware are similar
-  if (targetAngle >= currentAngle - 10 && targetAngle <= currentAngle + 10){
-    elevationAligned = true;
-  }
-  if (elevationAligned == false){
-    //Serial.println("Move the elevation to align with hardware");
-    Serial.println("Incorrect Alignment");
-    delay(500);
-    Serial.println(currentAngle);
-    return;
-  }
-  
-  //Map/Lerp value from Encoder to Angles
-  currentAngle = map(currentAngle,0,ELEVATION_ENCODER_RANGE,ELEVATION_MAX_DEGREES,ELEVATION_MIN_DEGREES);
+//  if (targetAngle >= currentAngle - 10 && targetAngle <= currentAngle + 10){
+//    elevationAligned = true;
+//  }
+//  if (elevationAligned == false){
+//    //Serial.println("Move the elevation to align with hardware");
+//    Serial.println("Incorrect Alignment");
+//    delay(500);
+      Serial.println(currentAngle);
+//    return;
+//  }
   
   //Write to elevationServo using PID and the current and target angles
   double angleMotorOutput=NEUTRAL_OUTPUT+elevationPID.getOutput(currentAngle,targetAngle);

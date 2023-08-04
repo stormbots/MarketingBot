@@ -23,7 +23,5 @@
 #define RADIO_IN_PIN 23
 
 #define RADIO_OUT_PIN 22
-
-#define ELEVATION_ENCODER_PIN_1 11
-#define ELEVATION_ENCODER_PIN_2 15  
-#define ABSOLUTE_ENCODER_PIN 8 //pwm pin
+ 
+#define ABSOLUTE_ENCODER_PIN 0 //pwm pin
