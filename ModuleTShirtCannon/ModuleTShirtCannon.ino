@@ -36,6 +36,8 @@
 #define FIRING_PLATE_OPEN LOW
 #define FIRING_PLATE_CLOSED HIGH
 
+#define TICKS_PER_BARREL ((4096*30)/24)
+
 //Constants for motors
 //The range for motors is from 1000 to 2000 with 1000 being 100% backwards and 2000 being 100% forwards. Thus, 1500 is neutral or no movement.
 #define NEUTRAL_OUTPUT 1500
@@ -51,10 +53,11 @@ PulsePositionInput radioCannonInput;
 
 //PID for elevationServo
 MiniPID elevationPID = MiniPID(10,0.0,0.0);
+Encoder barrelEncoder(ENCODER_2_A_PIN, ENCODER_2_B_PIN);
 
 
 //Current Position of the elevation in degrees
-float currentAngle = 0.0;
+float currentElevation = 0.0;
 float currentRotation = 0.0;
 
 //Declare Motors using servo library
@@ -128,13 +131,13 @@ void loop(){
 //  }
 
    //Read the encoder from the subfile
-  currentAngle = ReadElevationDegrees();
+  currentElevation = ReadElevationDegrees();
   currentRotation= ReadRotationPWM();
-  // Serial.println(currentAngle);
+  // Serial.println(currentElevation);
   // Serial.println(currentRotation);
   
   //Read Radio Channels
-  double targetAngle = radioCannonInput.read(3);
+  double targetElevation = radioCannonInput.read(3);
   bool cannonTrigger = radioCannonInput.read(7) >= 1600;
   //bool sirenTrigger = radioCannonInput.read(6)>= 1600;
   ManualReloadSwitch manualReloadSwitch = DONE;
@@ -157,24 +160,24 @@ void loop(){
   }
   
   //Map/Lerp the Radio Signal to Angles
-  if(targetAngle<10)targetAngle=10; //TODO adjust for temp hard stops
-  targetAngle = map(targetAngle,1000,2000,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
+  if(targetElevation<10)targetElevation=10; //TODO adjust for temp hard stops
+  targetElevation = map(targetElevation,1000,2000,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
   
   
   //Check if the positions  on the controller and the hardware are similar
-//  if (targetAngle >= currentAngle - 10 && targetAngle <= currentAngle + 10){
-//    elevationAligned = true;
-//  }
-//  if (elevationAligned == false){
-//    //Serial.println("Move the elevation to align with hardware");
-//    Serial.println("Incorrect Alignment");
-//    delay(50);
-//    return;
-//  }
+  if (targetElevation >= currentElevation - 10 && targetElevation <= currentElevation + 10){
+    elevationAligned = true;
+  }
+  if (elevationAligned == false){
+    //Serial.println("Move the elevation to align with hardware");
+    Serial.println("Incorrect Alignment");
+    delay(50);
+    return;
+  }
   
   //Write to elevationServo using PID and the current and target angles
-  double angleMotorOutput=NEUTRAL_OUTPUT+elevationPID.getOutput(currentAngle,targetAngle);
-  elevationServo.writeMicroseconds(angleMotorOutput);
+  double elevationMotorOutput=NEUTRAL_OUTPUT+elevationPID.getOutput(currentElevation,targetElevation);
+  elevationServo.writeMicroseconds(elevationMotorOutput);
   
   //Run State Machine
   run_state_machine(cannonTrigger,manualReloadSwitch);
@@ -294,7 +297,7 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       //dump valve closed 
       digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
-      if (stateMachineTimer >400){
+      if (stateMachineTimer>1000){
         state=MANUAL_RELOAD_LOCKED;
       }
     break;
@@ -345,6 +348,7 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_UNLOCKED
       if (stateMachineTimer > 1000){
+        barrelEncoder.readAndReset();
         state=RELOAD_UNLOCKED;
       }
     break;
@@ -362,8 +366,8 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (stateMachineTimer > 400){
-        state=RELOAD_LOCKED;
+      if (barrelEncoder.read() > TICKS_PER_BARREL/3){
+        state=MANUAL_RELOAD_LOCKED;
       }
     break;
     case RELOAD_LOCKED:
