@@ -1,0 +1,6 @@
+{
+    "port": "/dev/ttyACM0",
+    "configuration": "usb=serial,speed=96,opt=o2std,keys=en-us",
+    "board": "teensy:avr:teensy31",
+    "sketch": "ModuleTShirtCannon.ino"
+}

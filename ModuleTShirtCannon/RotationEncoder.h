@@ -8,7 +8,7 @@ unsigned int pulseRotation=0;
 static void ISRRotationRead(){
   if(digitalRead(interruptPinRotation)==HIGH){
     isrTimerRotation=0;    
-  } else{
+  } else {
     pulseRotation=isrTimerRotation;
   }
 }
@@ -21,6 +21,11 @@ void ConfigRotationPWM(int pin ){
 
 int ReadRotationPWM(){
   return pulseRotation;
+}
+
+int ReadRotationDegrees(){
+  int pulse=pulseRotation;
+  return map(pulse,0,4096,0,360);
 }
 
 #endif

@@ -55,6 +55,7 @@ MiniPID elevationPID = MiniPID(10,0.0,0.0);
 
 //Current Position of the elevation in degrees
 float currentAngle = 0.0;
+float currentRotation = 0.0;
 
 //Declare Motors using servo library
 Servo cylinderServo;
@@ -106,6 +107,7 @@ void setup(){
 
   //Use the encoderHome subfile to read the absolute encoder
   ConfigElevationPWM(ABSOLUTE_ENCODER_PIN);
+  ConfigRotationPWM(BARREL_ABSOLUTE_ENCODER_PIN);
   
   //Wait to ensure everything gets time to respond
   delay(30); 
@@ -127,6 +129,9 @@ void loop(){
 
    //Read the encoder from the subfile
   currentAngle = ReadElevationDegrees();
+  currentRotation= ReadRotationPWM();
+  // Serial.println(currentAngle);
+  // Serial.println(currentRotation);
   
   //Read Radio Channels
   double targetAngle = radioCannonInput.read(3);
@@ -163,8 +168,7 @@ void loop(){
 //  if (elevationAligned == false){
 //    //Serial.println("Move the elevation to align with hardware");
 //    Serial.println("Incorrect Alignment");
-//    delay(500);
-      Serial.println(currentAngle);
+//    delay(50);
 //    return;
 //  }
   
