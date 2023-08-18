@@ -297,6 +297,7 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       //dump valve closed 
       digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
+
       if (stateMachineTimer>1000){
         state=MANUAL_RELOAD_LOCKED;
       }
