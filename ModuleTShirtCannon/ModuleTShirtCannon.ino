@@ -36,11 +36,13 @@
 #define FIRING_PLATE_OPEN LOW
 #define FIRING_PLATE_CLOSED HIGH
 
+#define TICKS_PER_BARREL ((4096*30)/24)
+
 //Constants for motors
 //The range for motors is from 1000 to 2000 with 1000 being 100% backwards and 2000 being 100% forwards. Thus, 1500 is neutral or no movement.
 #define NEUTRAL_OUTPUT 1500
 //Increase Forward Output to Increase Motor Speeds, forward output is added to neutral output to produce movement
-#define FORWARD_OUTPUT 100
+#define FORWARD_OUTPUT 110
 
 //Radios
 //This use the pulse position library to creat inputs and outputs for our radio.
@@ -51,6 +53,7 @@ PulsePositionInput radioCannonInput;
 
 //PID for elevationServo
 MiniPID elevationPID = MiniPID(10,0.0,0.0);
+Encoder barrelEncoder(ENCODER_2_A_PIN, ENCODER_2_B_PIN);
 
 
 //Current Position of the elevation in degrees
@@ -288,13 +291,14 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       //index locked 
       digitalWrite(CYLINDER_LOCK_PIN, INDEX_UNLOCKED);
       //Revolver motor on
-      cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT+FORWARD_OUTPUT);
+      cylinderServo.writeMicroseconds(NEUTRAL_OUTPUT);
       //firing plate opened
       digitalWrite(FIRING_PLATE_PIN, FIRING_PLATE_OPEN);
       //dump valve closed 
       digitalWrite(FIRING_PIN_1, FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2, FIRING_PIN_2_OPEN);
-      if (stateMachineTimer >400){
+
+      if (stateMachineTimer>200){
         state=MANUAL_RELOAD_LOCKED;
       }
     break;
@@ -345,6 +349,7 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_UNLOCKED
       if (stateMachineTimer > 1000){
+        barrelEncoder.readAndReset();
         state=RELOAD_UNLOCKED;
       }
     break;
@@ -362,7 +367,7 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       digitalWrite(FIRING_PIN_1,FIRING_PIN_1_CLOSED);
       digitalWrite(FIRING_PIN_2,FIRING_PIN_2_OPEN);
       // if timer expires advance to RELOAD_LOCKED
-      if (stateMachineTimer > 400){
+      if (barrelEncoder.read() > TICKS_PER_BARREL/6){
         state=RELOAD_LOCKED;
       }
     break;
@@ -399,9 +404,9 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       case PRESSURIZING : Serial.println("Pressurizing");break;;
       case IDLE : Serial.println("Idle");break;;
       case IDLE_READY : Serial.println("Idle_ready");break;;
-      case MANUAL_LOADING : Serial.println("Dump Pressure Unlocked");break;;
-      case MANUAL_RELOAD_UNLOCKED : Serial.println("Dump Pressure Locked Relatching");break;;
-      case MANUAL_RELOAD_LOCKED : Serial.println("Dump Pressure Locked");break;;
+      case MANUAL_LOADING : Serial.println("Manual Loading");break;;
+      case MANUAL_RELOAD_UNLOCKED : Serial.println("Manual Reload Unlocked");break;;
+      case MANUAL_RELOAD_LOCKED : Serial.println("Manual Reload Locked");break;;
       case FIRING : Serial.println("Firing");break;;
       case RECOVERY : Serial.println("Recovery");break;;
       case RELOAD_UNLOCKED : Serial.println("Reload_unlocked");break;;
