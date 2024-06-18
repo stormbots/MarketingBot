@@ -1,159 +1,165 @@
-  //Radio, heartbeat, and motor libraries
-#include <PulsePosition.h>
+// rf95_client.pde
+// -*- mode: C++ -*-
+// Example sketch showing how to create a simple messageing client
+// with the RH_RF95 class. RH_RF95 class does not provide for addressing or
+// reliability, so you should only use RH_RF95 if you do not need the higher
+// level messaging abilities.
+// It is designed to work with the other example rf95_server
+// Tested with Anarduino MiniWirelessLoRa, Rocket Scream Mini Ultra Pro with
+// the RFM95W, Adafruit Feather M0 with RFM95
+
+#include <SPI.h>
+#include <RH_RF95.h>
+#include <DataPackets.h>
 #include <elapsedMillis.h>
-#include <Servo.h>
 
-//Defining Teensy Pins
-#define RADIO_IN_PIN 22
-#define RADIO_OUT_PIN 23
+//M0 uses SerialUSB for the output, so rebind it
+#if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
+// Required for Serial on Zero based boards
+#define Serial SERIAL_PORT_USBVIRTUAL
+#endif
 
-#define MOTOR_LEFT_PIN 10
-#define MOTOR_RIGHT_PIN 9
 
-#define SHIFTER_PIN_A 4
-#define SHIFTER_PIN_B 3
+elapsedMillis heartbeatTimer;
+void heartbeat(){
+  digitalWrite(LED_BUILTIN, heartbeatTimer >200);
+  //Reset it
+  if(heartbeatTimer>500) heartbeatTimer=0;
+}
 
-#define BUILT_IN_LED 13
+// Singleton instance of the radio driver
+// RH_RF95 rf95;
+//RH_RF95 rf95(5, 2); // Rocket Scream Mini Ultra Pro with the RFM95W
+RH_RF95 rf95(8, 3);  // Adafruit Feather M0 with RFM95
 
-//Defining default gear
-#define HIGH_GEAR true
-#define LOW_GEAR (!HIGH_GEAR)
-
-//Declaring radio input and output
-PulsePositionOutput radioOutput;
-PulsePositionInput radioInput;
-
-//Declaring heartbeat
-elapsedMillis heartbeat;
-
-//Declare Motors
-Servo motorLeft;
-Servo motorRight;
-
+// Need this on Arduino Zero with SerialUSB port (eg RocketScream Mini Ultra Pro)
+//#define Serial SerialUSB
 
 
 void setup() {
-  //Begging Serial log
+  pinMode(LED_BUILTIN, OUTPUT);
+
   Serial.begin(9600);
+  while(!Serial){
+    if(elapsedMillis() > 1000) return;
+  }
+  Serial.println("Rebooting chassis....");
 
-  //Start up radio 
-  radioOutput.begin(RADIO_OUT_PIN);
-  radioInput.begin(RADIO_IN_PIN);
-  
-  //Set up pinmodes
-  pinMode(13,OUTPUT);
-  pinMode(SHIFTER_PIN_A,OUTPUT);
-  pinMode(SHIFTER_PIN_B,OUTPUT);
+  if (!rf95.init())
+    Serial.println("init failed");
+  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
-  //Put bot into gear
-  digitalWrite(SHIFTER_PIN_A, LOW_GEAR);
-  digitalWrite(SHIFTER_PIN_B, !digitalRead(SHIFTER_PIN_A));
+  // You can change the modulation parameters with eg
+  // rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128);
 
-  //Zero out motors on startup
-  motorLeft.attach(MOTOR_LEFT_PIN);
-  motorLeft.writeMicroseconds(1500);
-  motorRight.attach(MOTOR_RIGHT_PIN);
-  motorRight.writeMicroseconds(1500);
+  // The default transmitter power is 13dBm, using PA_BOOST.
+  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
+  // you can set transmitter powers from 2 to 20 dBm:
+  rf95.setFrequency(915.0);
+  rf95.setTxPower(23, false);
 }
 
+
+
+union ChassisControlData{
+  ChassisControl data;
+  uint8_t buffer[4*8];
+} chassisControlData;
+uint8_t ChassisControlDataLen=4;
+
+
+union ChassisTelemetryData{
+  ChassisTelemetry data;
+  uint8_t buffer[5*8];
+} chassisTelemetryData;
+uint8_t chassisTelemetryDataLen=5;
+
+//temporary namespace for testing; Move actual encoder stuff somewhere else
+namespace encoders{
+  int encLeft=0;
+  int encRight=0;
+  int pressure=0;
+  float pressuredelta=0;
+}
+
+boolean enable= false;
+elapsedMillis enableWatchdog;
+
+elapsedMillis dt;
+
 void loop() {
-  /*Debug for Shifting Actuators*/
-  //(SHIFTER_PIN_A,HIGH_GEAR);
-  //digitalWrite(SHIFTER_PIN_B,LOW_GEAR);
-  //delay(3000);
-  //digitalWrite(SHIFTER_PIN_A,LOW_GEAR);
-  //digitalWrite(SHIFTER_PIN_B,HIGH_GEAR);
-  //delay(3000);
-  //'return;
 
-  //Declare motor speed variable
-  float leftMotorSpeed = 1500;
-  float rightMotorSpeed = 1500;
+  // uint8_t data[] = "Hello World!";
+  // rf95.send(data, sizeof(data));
+  // rf95.waitPacketSent();
 
-  //Declare control and shifting values using radio
-  float throttleValue = radioInput.read(2);
-  float turningValue= radioInput.read(1); 
-  float shiftValue = radioInput.read(6);
 
-  //Constrain values to avoid weirdness
-  throttleValue = constrain(throttleValue,1000,2000);
-  turningValue = constrain(turningValue,1000,2000);
-  shiftValue = constrain(shiftValue,1000,2000);
-  
-  //Copy radio signals and pass them on to the module
-  if(radioInput.available() < 8){
-    return;
-  }
-  for(int i=1;i<=8; i++){
-    radioOutput.write(i,radioInput.read(i));
-  }
-  
-  //Overwrite throttle values being sent to the module , 
-  //as these may be modified by Chassis
-  radioOutput.write(2,throttleValue);
-  radioOutput.write(1,turningValue);
-  radioOutput.write(6,shiftValue);
+  // Now wait for a reply
+  if (rf95.waitAvailableTimeout(3000)) {
+    // Should be a reply message for us now
+    if (rf95.recv(chassisControlData.buffer, &ChassisControlDataLen)) {
+      
+      // Serial.print("got reply: ");
+      // Serial.println((char*)chassisControlData.buffer);
+      //      Serial.print("RSSI: ");
+      Serial.print(rf95.lastRssi(), DEC);
+      Serial.print(",");
+      Serial.print(chassisControlData.data.metadata.type);
+      Serial.print(",");
+      Serial.print(chassisControlData.data.metadata.heartbeat);
+      Serial.print(",");
+      Serial.print(chassisControlData.data.speed.left);
+      Serial.print(",");
+      Serial.print(chassisControlData.data.speed.right);
+      Serial.print(",");
+      Serial.print(chassisControlData.data.gear);
+      Serial.print(",");
+      Serial.print(chassisControlData.data.enable);
+      Serial.println();
 
-  //Arcade Drive Logic//
-  turningValue = map(turningValue,1000,2000, -500,500);
-  throttleValue = map(throttleValue, 1000,2000,2000,1000);
-  leftMotorSpeed= throttleValue + turningValue;
-  rightMotorSpeed = throttleValue - turningValue;   
-  {
-    //convert our ranges
-    float vLeft  = map(leftMotorSpeed,1000,2000,-1,1);  
-    float vRight = map(rightMotorSpeed,1000,2000,-1,1);    
-    float vMax = max(abs(vLeft),abs(vRight));
-    if(vMax > 1){
-      leftMotorSpeed =  map(vLeft/vMax,-1,1,1000,2000);
-      rightMotorSpeed =  map(vRight/vMax,-1,1,1000,2000);
-    }    
-    leftMotorSpeed =  map(leftMotorSpeed,1000,2000,2000,1000);
-  }
-  
 
-//  //Convert from milliseconds to easy to math values
-//  turningValue = map(turningValue, 1000,2000, -1, 1);
-//  throttleValue = map(throttleValue,1000,2000,-1,1);
-//
-//  //Pythagorean theorem to get our magnitude
-//  double magnitude = sqrt(sq(turningValue)+sq(throttleValue));
-//  Serial.println(magnitude);
-//  if (magnitude >1){
-//    throttleValue /= magnitude;
-//    turningValue /= magnitude;
-//  }
-//
-//  //Add turning bias to our magnitude
-//  leftMotorSpeed = magnitude + turningValue;
-//  rightMotorSpeed = magnitude - turningValue;
-//  
-//  //Convert from -1 and 1 to milliseconds
-//  leftMotorSpeed = map(leftMotorSpeed, -1,1,1000,2000);
-//  rightMotorSpeed = map(rightMotorSpeed, -1,1,1000,2000);
-  
-  /* Shift depending on switch*/
-  if (shiftValue <= 1500){
-    //shift to low if switch is low
-    digitalWrite(SHIFTER_PIN_A,LOW_GEAR);
-    digitalWrite(SHIFTER_PIN_B,HIGH_GEAR);
+      enable = chassisControlData.data.enable;
+      enableWatchdog = 0; //feed the doggo
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    } else {
+      Serial.println("recv failed");
+    }
+  } else {
+    Serial.println("No reply, is rf95_server running?");
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(400);
+
   }
-  else {
-    digitalWrite(SHIFTER_PIN_A,HIGH_GEAR);
-    digitalWrite(SHIFTER_PIN_B,LOW_GEAR);
-  }
-  
-  /* Write to Motors */
-  motorLeft.writeMicroseconds(leftMotorSpeed);
-  motorRight.writeMicroseconds(rightMotorSpeed);
-  Serial.print((int)leftMotorSpeed);
-  Serial.print("  ");
-  Serial.print((int)rightMotorSpeed);
-  Serial.println("");
-  
-  /* Check our system heartbeat */
-  if(heartbeat > 1000){
-    heartbeat=0;
-    digitalWrite(BUILT_IN_LED,!digitalRead(BUILT_IN_LED));
-  }
+
+  // Disable the bot if we lose track of the controller
+  if(enableWatchdog > 250){ enable = false; }
+
+  //mock some hardware to make telemetry interesting
+  int maxdv = 10;
+  encoders::encRight = constrain(chassisControlData.data.speed.right, encoders::encRight-maxdv, encoders::encRight+maxdv );
+  encoders::encLeft = constrain(chassisControlData.data.speed.left, encoders::encLeft-maxdv, encoders::encLeft+maxdv );
+  if(encoders::pressure>=90){encoders::pressuredelta=-0.5;}
+  if(encoders::pressure<60){encoders::pressuredelta=5;}
+  encoders::pressure += encoders::pressuredelta*dt/1000;
+  dt=0;
+
+  //Shove data into telemetry
+  chassisTelemetryData.data.speed.left = encoders::encLeft;
+  chassisTelemetryData.data.speed.right = encoders::encRight;
+  chassisTelemetryData.data.batteryVoltage = analogRead(A7) //configured for lipo
+    *2 //double reading due to voltage divider
+    *3.3 //multiply by reference voltage
+    *10 // convert from volt to decivolt
+    /1024 // Divide by ADC steps to get voltage
+    ; 
+  chassisTelemetryData.data.gear = chassisControlData.data.gear;
+  chassisTelemetryData.data.enable;
+  chassisTelemetryData.data.pressure = encoders::pressure;
+
+  rf95.send(chassisTelemetryData.buffer, sizeof(chassisTelemetryData.buffer));
+  rf95.waitPacketSent();
+
+  delay(20);
 }
