@@ -12,6 +12,8 @@
 #include <RH_RF95.h>
 #include <DataPackets.h>
 #include <elapsedMillis.h>
+#include "Pins.h"
+#include "Bot.h"
 
 //M0 uses SerialUSB for the output, so rebind it
 #if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
@@ -28,8 +30,6 @@ void heartbeat(){
 }
 
 // Singleton instance of the radio driver
-// RH_RF95 rf95;
-//RH_RF95 rf95(5, 2); // Rocket Scream Mini Ultra Pro with the RFM95W
 RH_RF95 rf95(8, 3);  // Adafruit Feather M0 with RFM95
 
 // Need this on Arduino Zero with SerialUSB port (eg RocketScream Mini Ultra Pro)
@@ -41,24 +41,22 @@ void setup() {
 
   Serial.begin(9600);
   while(!Serial){
+    //Wait for a moment to see if we're trying to connect a USB wire
     if(elapsedMillis() > 1000) return;
   }
   Serial.println("Rebooting chassis....");
 
-  if (!rf95.init())
+  if (!rf95.init()){
     Serial.println("init failed");
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-
-  // You can change the modulation parameters with eg
-  // rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128);
-
-  // The default transmitter power is 13dBm, using PA_BOOST.
-  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
-  // you can set transmitter powers from 2 to 20 dBm:
+  }
+  // Unless overwritten, library defaults are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+  // Configure RFM95, operating at 915mhz
   rf95.setFrequency(915.0);
   rf95.setTxPower(23, false);
-}
 
+  bot::shift(ChassisGear::Low);
+  // bot::tankDrive((ChassisSpeed){0,0});
+}
 
 
 union ChassisControlData{
@@ -66,7 +64,7 @@ union ChassisControlData{
   uint8_t buffer[4*8];
 } chassisControlData;
 uint8_t ChassisControlDataLen=4;
-
+ChassisControlData radioBuffer;
 
 union ChassisTelemetryData{
   ChassisTelemetry data;
@@ -74,92 +72,76 @@ union ChassisTelemetryData{
 } chassisTelemetryData;
 uint8_t chassisTelemetryDataLen=5;
 
-//temporary namespace for testing; Move actual encoder stuff somewhere else
-namespace encoders{
-  int encLeft=0;
-  int encRight=0;
-  int pressure=0;
-  float pressuredelta=0;
-}
 
 boolean enable= false;
 elapsedMillis enableWatchdog;
 
-elapsedMillis dt;
+elapsedMillis looptime;
 
 void loop() {
-
-  // uint8_t data[] = "Hello World!";
-  // rf95.send(data, sizeof(data));
-  // rf95.waitPacketSent();
-
-
   // Now wait for a reply
-  if (rf95.waitAvailableTimeout(3000)) {
+  if (rf95.waitAvailableTimeout(10)) {
     // Should be a reply message for us now
-    if (rf95.recv(chassisControlData.buffer, &ChassisControlDataLen)) {
-      
-      // Serial.print("got reply: ");
-      // Serial.println((char*)chassisControlData.buffer);
-      //      Serial.print("RSSI: ");
-      Serial.print(rf95.lastRssi(), DEC);
-      Serial.print(",");
-      Serial.print(chassisControlData.data.metadata.type);
-      Serial.print(",");
-      Serial.print(chassisControlData.data.metadata.heartbeat);
-      Serial.print(",");
-      Serial.print(chassisControlData.data.speed.left);
-      Serial.print(",");
-      Serial.print(chassisControlData.data.speed.right);
-      Serial.print(",");
-      Serial.print(chassisControlData.data.gear);
-      Serial.print(",");
-      Serial.print(chassisControlData.data.enable);
-      Serial.println();
+    if (rf95.recv(radioBuffer.buffer, &ChassisControlDataLen)) {
+      //Have data; Make sure it's what we want to actually listen for
+      //Note: This only works because we specifically ensure all transmitted packets 
+      // include this packet type up front.
+      if(radioBuffer.data.metadata.type==PacketType::CHASSIS_CONTROL){
+        //valid data; Handle it appropriately
+        chassisControlData.data = radioBuffer.data;
+        enable = chassisControlData.data.enable;
+        enableWatchdog = 0; //feed the doggo
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
 
+      //debug printing
+      // Serial.print(rf95.lastRssi(), DEC);
+      // Serial.print(",");
+      // Serial.print(chassisControlData.data.metadata.type);
+      // Serial.print(",");
+      // Serial.print(chassisControlData.data.metadata.heartbeat);
+      // Serial.print(",");
+      // Serial.print(chassisControlData.data.speed.left);
+      // Serial.print(",");
+      // Serial.print(chassisControlData.data.speed.right);
+      // Serial.print(",");
+      // Serial.print(chassisControlData.data.gear);
+      // Serial.print(",");
+      // Serial.print(chassisControlData.data.enable);
+      // Serial.println();
 
-      enable = chassisControlData.data.enable;
-      enableWatchdog = 0; //feed the doggo
-      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      }
     } else {
       Serial.println("recv failed");
     }
   } else {
     Serial.println("No reply, is rf95_server running?");
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(400);
-
   }
 
   // Disable the bot if we lose track of the controller
-  if(enableWatchdog > 250){ enable = false; }
+  if(enableWatchdog > 100){
+    enable = false;
+    bot::shift(ChassisGear::Low);
+  }
 
-  //mock some hardware to make telemetry interesting
-  int maxdv = 10;
-  encoders::encRight = constrain(chassisControlData.data.speed.right, encoders::encRight-maxdv, encoders::encRight+maxdv );
-  encoders::encLeft = constrain(chassisControlData.data.speed.left, encoders::encLeft-maxdv, encoders::encLeft+maxdv );
-  if(encoders::pressure>=90){encoders::pressuredelta=-0.5;}
-  if(encoders::pressure<60){encoders::pressuredelta=5;}
-  encoders::pressure += encoders::pressuredelta*dt/1000;
-  dt=0;
 
-  //Shove data into telemetry
-  chassisTelemetryData.data.speed.left = encoders::encLeft;
-  chassisTelemetryData.data.speed.right = encoders::encRight;
-  chassisTelemetryData.data.batteryVoltage = analogRead(A7) //configured for lipo
-    *2 //double reading due to voltage divider
-    *3.3 //multiply by reference voltage
-    *10 // convert from volt to decivolt
-    /1024 // Divide by ADC steps to get voltage
-    ; 
-  chassisTelemetryData.data.gear = chassisControlData.data.gear;
-  chassisTelemetryData.data.enable;
-  chassisTelemetryData.data.pressure = encoders::pressure;
+  if(enable){
+    bot::tankDrive(chassisControlData.data.speed);
+    bot::shift(chassisControlData.data.gear);    
+  }
 
-  rf95.send(chassisTelemetryData.buffer, sizeof(chassisTelemetryData.buffer));
-  rf95.waitPacketSent();
+  //Reply with telemetry
+  do{
+    chassisTelemetryData.data.speed = bot::currentSpeed();
+    chassisTelemetryData.data.batteryVoltage = bot::batteryVoltage()*10; //make sure to use deciVolts
+    chassisTelemetryData.data.gear = chassisControlData.data.gear;
+    chassisTelemetryData.data.enable = enable;
+    chassisTelemetryData.data.pressure = bot::currentPressure(); //TODO: 
 
-  delay(20);
+    rf95.send(chassisTelemetryData.buffer, sizeof(chassisTelemetryData.buffer));
+    rf95.waitPacketSent();
+  }while(false);
+
+  //try to run at a consistent loop time
+  int t=20-looptime;
+  delay(t>0?t:0);
 }
