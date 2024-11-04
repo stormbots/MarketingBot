@@ -8,7 +8,8 @@ namespace Pins{
         int b;
     };
     Quad quad1{A1,A0};
-    Quad quad2{A3,A2};
+    // Quad quad2{A3,A2};// A2 (used in hardware) conflicts with radio
+    Quad quad2{A3,5}; // 5 is solder jumpered solution on as-built board
 
     struct {
         int p1=1;
