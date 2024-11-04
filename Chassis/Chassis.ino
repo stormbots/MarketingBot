@@ -21,9 +21,8 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 union ChassisControlData{
   ChassisControl data;
-  uint8_t buffer[CHASSIS_CONTROL_SIZE_BYTES*8];
+  uint8_t buffer[CHASSIS_CONTROL_SIZE_BYTES];
 } chassisControlData;
-uint8_t ChassisControlDataLen=CHASSIS_CONTROL_SIZE_BYTES*8;
 
 union RadioBuffer{
   ChassisControl ccd;
@@ -34,11 +33,8 @@ union ChassisTelemetryData{
   ChassisTelemetry data;
   uint8_t buffer[CHASSIS_TELEMETRY_SIZE_BYTES];
 } chassisTelemetryData;
-uint8_t chassisTelemetryDataLen=CHASSIS_TELEMETRY_SIZE_BYTES*8;
 
 elapsedMillis watchdog;
-
-bool enable=false;
 
 void setup() {
   // put your setup code here, to run once:
@@ -76,42 +72,54 @@ void setup() {
 
   //Informative tasks for debugging
   // Scheduler.startLoop(print_status);
-  Scheduler.startLoop(printControl);
+  // Scheduler.startLoop(printControl);
   Scheduler.startLoop(printTelemetry);
+  
 }
 
+
+bool isEnabled=false;
+String enableText="EN-> Never enabled"; //big long string to preset the buffer
 void loop() {
-  enable=chassisTelemetryData.data.enable;
-  //First, do safety checks and manage the watchdog.
-  if(enable==false && chassisControlData.data.enable==true){
-    Serial.println("ENABLING BOT");
+  bool enableAllowed=true; //Assume we're good to go
+
+  //Check unsafe conditions
+  if(isEnabled && watchdog>400){
+    enableText="EN -> Timed out";
+    enableAllowed=false;
   }
-  enable = chassisControlData.data.enable;
-  //If we lost contact with the controller, disable.
-  analogWrite(LED_BUILTIN,constrain(watchdog/4,0,255));
-  if(watchdog > 300 && enable){
-    Serial.print("?");
+  else if(isEnabled && bot::batteryVoltage()<9){
+    enableText="EN -> Low Battery";
+    enableAllowed=false;
   }
-  else if(watchdog > 400 && enable){
-    enable = false;
-    Serial.print("\nded :( ");
-    Serial.print(watchdog);
-    // Since we may not be recieving more packets, unset the command to enable it
-    chassisControlData.data.enable=false;
+  else if(isEnabled && chassisControlData.data.enable==false){
+    enableText="EN -> Remote disable";
+    enableAllowed=false;
   }
+  else if(!isEnabled && enableAllowed && chassisControlData.data.enable){
+    //All good! Clear our text
+    enableText="";
+  }
+  //We can keep enable if both are allowed
+  isEnabled = chassisControlData.data.enable && enableAllowed;
+
+  // if(isEnabled)enableText="";
 
   //Write the robot state to telemetry
   chassisTelemetryData.data.metadata.type = PacketType::CHASSIS_TELEMETRY;
-  chassisTelemetryData.data.metadata.heartbeat = millis()/16;
 
-  chassisTelemetryData.data.batteryVoltage = bot::batteryVoltage(); // TODO: Battery sensing not currently implimented
+  chassisTelemetryData.data.batteryVoltage = bot::batteryVoltage()*10; // TODO: Battery sensing not currently implimented
   chassisTelemetryData.data.gear = ChassisGear::Low; // TODO: Shifter solenoid not operational in hardware
-  chassisTelemetryData.data.enable = enable;
+  chassisTelemetryData.data.enable = isEnabled;
   chassisTelemetryData.data.pressure = bot::currentPressure(); //TODO: Hardware detection not installed
   chassisTelemetryData.data.speed = bot::currentSpeed();
 
+  //TODO: Left side encoder not actually hooked up inside of the gearbox, and does not spin
+  //This means for now, we cannot use certain nice to have features.
+
+
   //If we're disabled, stop actuators and exit loop
-  if(enable){
+  if(isEnabled){
     //Pass provided Control data to the hardware
     bot::tankDrive(chassisControlData.data.speed);
     bot::shift(chassisControlData.data.gear);
@@ -119,10 +127,6 @@ void loop() {
     bot::tankDrive((ChassisSpeeds){0,0});
     bot::shift(ChassisGear::Low);
   }
-
-  //Pass provided Control data to the hardware
-  bot::tankDrive(chassisControlData.data.speed);
-  bot::shift(chassisControlData.data.gear);
 
   //wait til next loop
   delay(5);
@@ -133,8 +137,9 @@ void loop() {
 void send_telemetry(){
   // Serial.println();
   // Serial.print("#");
-  bool sent=false; 
+  bool sent=false;
 
+  chassisTelemetryData.data.metadata.heartbeat += 1;
   sent=rf95.send(chassisTelemetryData.buffer, CHASSIS_TELEMETRY_SIZE_BYTES);
   // Serial.print(sent ? ">>" : "--" );
   bool done = rf95.waitPacketSent(200);
@@ -142,7 +147,7 @@ void send_telemetry(){
 
   // prevent timing hiccups with switching radio tx/rx modes
   // when robot is operating until better solution located
-  delay(enable? 10000 : 500);
+  delay(isEnabled? 2000 : 200);
 }
 
 
@@ -161,6 +166,11 @@ void recieve_input(){
       ){
         //valid data; Handle it appropriately
         chassisControlData.data = radioBuffer.ccd;
+        // Serial.printf("[OK %2i%s] ",
+        //   chassisControlData.data.metadata.heartbeat,
+        //   chassisControlData.data.enable?"+":"-"
+        //   );
+
 
         //pet the watchdog to keep the system alive
         watchdog=0;
@@ -171,7 +181,7 @@ void recieve_input(){
         // Serial.printf("?(%i) ",radiobufferlen);
         // for(int i = 0; i < radiobufferlen; i++){
         //   for(int j = 0; j < 8; j++){
-        //     Serial.print((chassisControlData.buffer[i]>>(7-j)) &1);
+        //     Serial.print((radioBuffer.buffer[i]>>(7-j)) &1);
         //   }
         //   Serial.print(".");
         // }
@@ -228,7 +238,8 @@ void printTelemetry(){
   Serial.print(" <Chassis ");
 
   Serial.printf(
-    "%s ",chassisTelemetryData.data.enable?"EN":"--"
+    "%2s",
+    chassisTelemetryData.data.enable?"EN":"--"
   );
 
   Serial.printf(
@@ -242,15 +253,20 @@ void printTelemetry(){
     chassisTelemetryData.data.gear==ChassisGear::High?"HG":"LG"
   );
 
+  Serial.printf(
+    "(%2i)",
+    chassisTelemetryData.data.metadata.heartbeat
+  );
 
-  // Serial.printf(
-  //   "[%i psi]",
-  //   chassisTelemetryData.data.pressure
-  // );
-  // Serial.printf(
-  //   "[%1f v]",
-  //   chassisTelemetryData.data.batteryVoltage/10.0
-  // );
+
+  Serial.printf(
+    "[%2i psi] ",
+    chassisTelemetryData.data.pressure
+  );
+  Serial.printf(
+    "[%2.1fv]",
+    chassisTelemetryData.data.batteryVoltage/10.0
+  );
 
   //Non-telemetry but useful 
   Serial.print(" "); 
@@ -261,10 +277,13 @@ void printTelemetry(){
   );
 
   Serial.printf(
-    "in[L%4i R%4i]",
+    "in[L%4i R%4i] ",
     bot::encLeft.read()/bot::configLow.encoderRatio,
     bot::encRight.read()/bot::configLow.encoderRatio
   );
+
+  Serial.print(enableText);
+  Serial.print(" ");
 
   delay(200);
 }

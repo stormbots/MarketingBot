@@ -83,13 +83,16 @@ void setup() {
   Scheduler.startLoop(recieve_telemetry);
   Scheduler.startLoop(updateControls);
 
-  //Informational tasks
+  //Show useful info
+  Scheduler.startLoop(printChassisControl);
+  Scheduler.startLoop(printChassisTelemetry);
+
+  //Helpful for debugging hardware
   // Scheduler.startLoop(Buttons::printDebug);
   // Scheduler.startLoop(print_status);
-  // Scheduler.startLoop(printChassisControl);
-  // Scheduler.startLoop(printChassisTelemetry);
+  // Scheduler.startLoop(debugRadioBuffer);
 
-  Scheduler.startLoop(debugControlPackets);
+  // Scheduler.startLoop(debugControlPackets);
 
   // Scheduler.startLoop(a);
   // Scheduler.startLoop(b);
@@ -103,10 +106,10 @@ void loop() {
 
 /** Monitor hardware + do the things. */
 void updateControls(){
-  if(Buttons::home2() >2000 && chassisControlData.data.enable==false){
+  if(Buttons::home2() >1500 && chassisControlData.data.enable==false){
     chassisControlData.data.enable=true;
   }
-  else if(Buttons::home2() >2000 && chassisControlData.data.enable==true){
+  else if(Buttons::home2() >1500 && chassisControlData.data.enable==true){
     //wait to release button
   }
   else if(Buttons::home2() && chassisControlData.data.enable==true){
@@ -240,28 +243,28 @@ void printChassisTelemetry(){
   Serial.print(" <Chassis ");
 
   Serial.printf(
-    "%s",chassisTelemetryData.data.enable?"EN":".."
+    "%2s ",chassisTelemetryData.data.enable?"EN":"--."
   );
 
   Serial.printf(
-    "[L%4i R%4i]",
+    "[L%4i R%4i] ",
     chassisTelemetryData.data.speed.left,
     chassisTelemetryData.data.speed.right
   );
 
   Serial.printf(
-    "[%s]",
+    "[%s] ",
     chassisTelemetryData.data.gear==ChassisGear::High?"HG":"LG"
   );
 
-  // Serial.printf(
-  //   "[%i psi]",
-  //   chassisTelemetryData.data.pressure
-  // );
-  // Serial.printf(
-  //   "[%1f v]",
-  //   chassisTelemetryData.data.batteryVoltage/10.0
-  // );
+  Serial.printf(
+    "[%2i psi] ",
+    chassisTelemetryData.data.pressure
+  );
+  Serial.printf(
+    "[%2.1fv]",
+    chassisTelemetryData.data.batteryVoltage/10.0
+  );
 
   delay(200);
 }
@@ -282,6 +285,31 @@ void debugControlPackets(){
   for(int i = 0; i < sizeof(chassisControlData); i++){
     for(int j = 0; j < 8; j++){
       Serial.print((chassisControlData.buffer[i]>>(7-j)) &1);
+    }
+    Serial.print(".");
+  }
+
+
+  Serial.println();
+  delay(200);
+}
+
+void debugRadioBuffer(){
+  Serial.print("D ");
+
+  Serial.printf("<%2i>",radioBuffer.chassisTelemetry.metadata.heartbeat);
+
+  Serial.printf(" %2s ",radioBuffer.chassisTelemetry.enable?"EN":"--");
+
+  //Print a bitfield of the data as it would be sent
+  //Useful to troubleshoot length and offset issues
+  Serial.print(" ");
+  int size=CHASSIS_TELEMETRY_SIZE_BYTES+5;
+  // size=sizeof(radioBuffer.buffer);
+  size=sizeof(12);
+  for(int i = 0; i < size; i++){
+    for(int j = 0; j < 8; j++){
+      Serial.print((radioBuffer.buffer[i]>>(7-j)) &1);
     }
     Serial.print(".");
   }

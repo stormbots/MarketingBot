@@ -71,7 +71,7 @@ struct ChassisTelemetry{
     /** If the chassis is operating*/
     boolean enable: 1;
 };
-#define CHASSIS_TELEMETRY_SIZE_BYTES 4
+#define CHASSIS_TELEMETRY_SIZE_BYTES 6
 
 struct ChassisControl{
     Metadata metadata;
@@ -105,7 +105,7 @@ struct ChassisConfig{
     /// Derivitative gain constant
     float kd; //unused in code
 };
-#define CHASSIS_CONFIG_SIZE_BYTES 4
+#define CHASSIS_CONFIG_SIZE_BYTES 12
 
 
 

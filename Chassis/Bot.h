@@ -125,7 +125,7 @@ namespace bot {
   }
 
   /// Return battery voltage in volts (not currently implimented)
-  int batteryVoltage() {
+  float batteryVoltage() {
     //Read a lipo battery connected to the Feather.
     // chassisTelemetryData.data.batteryVoltage = analogRead(A7) //configured for lipo
     // *2 //double reading due to voltage divider
@@ -134,7 +134,7 @@ namespace bot {
     // /1024 // Divide by ADC steps to get voltage
     // ;
     //TODO: Add board support to properly scale down 12V inputs to
-    return 0;
+    return 15;
   }
 
   /// Return system air pressure (not currently implimented)
