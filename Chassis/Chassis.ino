@@ -50,6 +50,8 @@ void setup() {
   //Do various hardware tweaks
   bot::init();
 
+  pinMode(LED_BUILTIN,OUTPUT);
+
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, LOW);
   delay(100);
@@ -74,9 +76,7 @@ void setup() {
   // Scheduler.startLoop(print_status);
   // Scheduler.startLoop(printControl);
   Scheduler.startLoop(printTelemetry);
-  
 }
-
 
 bool isEnabled=false;
 String enableText="EN-> Never enabled"; //big long string to preset the buffer
@@ -98,12 +98,11 @@ void loop() {
   }
   else if(!isEnabled && enableAllowed && chassisControlData.data.enable){
     //All good! Clear our text
+    bot::enable();
     enableText="";
   }
   //We can keep enable if both are allowed
   isEnabled = chassisControlData.data.enable && enableAllowed;
-
-  // if(isEnabled)enableText="";
 
   //Write the robot state to telemetry
   chassisTelemetryData.data.metadata.type = PacketType::CHASSIS_TELEMETRY;
@@ -121,12 +120,19 @@ void loop() {
   //If we're disabled, stop actuators and exit loop
   if(isEnabled){
     //Pass provided Control data to the hardware
+    // int speed = constrain(millis()/10,1500,2000);
+    // bot::tankDriveRaw(speed,speed);
+    // bot::tankDrive(ChassisSpeeds speeds)
+
     bot::tankDrive(chassisControlData.data.speed);
     bot::shift(chassisControlData.data.gear);
   }else{
     bot::tankDrive((ChassisSpeeds){0,0});
     bot::shift(ChassisGear::Low);
+    bot::disable();
   }
+
+  digitalWrite(LED_BUILTIN,isEnabled?255:0);
 
   //wait til next loop
   delay(5);
@@ -232,6 +238,7 @@ void printControl(){
   delay(200);
 }
 
+
 void printTelemetry(){
   Serial.println();
 
@@ -274,6 +281,13 @@ void printTelemetry(){
     "enc[L%4i R%4i] ",
     bot::encLeft.read(),
     bot::encRight.read()
+  );
+
+  //Non-telemetry but useful 
+  Serial.print(" "); 
+  Serial.printf(
+    "max[L%4i R%4i] ",
+    bot::maxleft,bot::maxright
   );
 
   Serial.printf(

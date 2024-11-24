@@ -7437,6 +7437,16 @@
 	)
 	(wire
 		(pts
+			(xy -129.54 11.43) (xy -120.65 11.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f93afbca-7241-4b3f-80bb-136275ac7087")
+	)
+	(wire
+		(pts
 			(xy 107.95 39.37) (xy 110.49 39.37)
 		)
 		(stroke
@@ -7535,6 +7545,16 @@
 			)
 		)
 		(uuid "24e79b8f-480e-49ff-a179-e10c190028e0")
+	)
+	(text "A2 Doesn't work properly for encoders\nimpacts the set up for spi and radio operation"
+		(exclude_from_sim yes)
+		(at 239.522 116.332 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "35ca5f5d-80c7-4c45-aaa4-5dd37cd681e0")
 	)
 	(text "Onboard LED\n"
 		(exclude_from_sim no)
@@ -10262,6 +10282,73 @@
 			(project "FRC - Mark Marketing Bot Dan"
 				(path "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55"
 					(reference "#PWR053")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_name "GND_2")
+		(lib_id "power:GND")
+		(at -120.65 11.43 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "2e6e8a88-f7a9-48a7-a925-dd4d51caac77")
+		(property "Reference" "#PWR063"
+			(at -120.65 17.78 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at -120.65 16.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at -120.65 11.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at -120.65 11.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at -120.65 11.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "8343ccf0-4233-4ce0-a3b6-15969ebbf5f4")
+		)
+		(instances
+			(project "Control Board"
+				(path "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55"
+					(reference "#PWR063")
 					(unit 1)
 				)
 			)
@@ -14482,73 +14569,6 @@
 			(project "FRC - Mark Marketing Bot Dan"
 				(path "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55"
 					(reference "R5")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+12V")
-		(at -129.54 11.43 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "97e26d68-8bd5-433a-99cd-95f1d63ffb27")
-		(property "Reference" "#PWR012"
-			(at -129.54 15.24 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "3V3"
-			(at -127 10.1599 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at -129.54 11.43 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at -129.54 11.43 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"+12V\""
-			(at -129.54 11.43 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "5a016e13-51b4-4753-9894-32e6fc24aed3")
-		)
-		(instances
-			(project "FRC - Mark Marketing Bot Dan"
-				(path "/e63e39d7-6ac0-4ffd-8aa3-1841a4541b55"
-					(reference "#PWR012")
 					(unit 1)
 				)
 			)
