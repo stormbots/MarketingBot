@@ -3,16 +3,20 @@
 #include "MiniPID.h"
 //Timer
 #include <elapsedMillis.h>
+#include <Scheduler.h>
 //Radio library
-#include <PulsePosition.h>
+// #include <PulsePosition.h>
 //Encoder library
 #include <Encoder.h>
 //Used to control all of the motors on the bot
 #include <Servo.h>
+#include <RH_RF95.h>
 //Subfiles
 #include "PinNames.h"
 #include "./RotationEncoder.h"
 #include "./ElevationEncoder.h"
+#include <MarketingBotDataPackets.h>
+
 
 //-----------------------------------//
 //All pin declarations are in the PinNames subfile
@@ -45,16 +49,36 @@
 #define FORWARD_OUTPUT 110
 
 //Radios
-//This use the pulse position library to creat inputs and outputs for our radio.
-//You can access documentation for this on the PJRC website
-//The output is commented out in this files because this module does not pass the radio signal on to another teensy.
-//PulsePositionOutput radioCannonOutput;
-PulsePositionInput radioCannonInput;
+#define RF95_FREQ 915.0
+#define RFM95_CS    8
+#define RFM95_INT   3
+#define RFM95_RST   4
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 //PID for elevationServo
 MiniPID elevationPID = MiniPID(10,0.0,0.0);
 Encoder barrelEncoder(ENCODER_2_A_PIN, ENCODER_2_B_PIN);
 
+union CannonControlData{
+  CannonControl data;
+  uint8_t buffer[CANNON_CONTROL_SIZE_BYTES];
+} cannonControlData;
+
+union RadioBuffer{
+  CannonControl ccd;
+  uint8_t buffer[128]; //Set to max size bitsize of the radio to avoid potential overflow
+} radioBuffer;
+
+union CannonTelemetryData{
+  CannonTelemetry data;
+  uint8_t buffer[CANNON_TELEMETRY_SIZE_BYTES];
+} cannonTelemetryData;
+
+elapsedMillis watchdog;
+
+/*************************
+Existing random variables that need better placement
+*************************/
 
 //Current Position of the elevation in degrees
 float currentElevation = 0.0;
@@ -76,6 +100,8 @@ bool cannonTrigger = false;
 //Boolean for checking if the controller and the elevation of the cannon are aligned
 bool elevationAligned = false;
 
+bool isEnabled=false;
+
 enum ManualReloadSwitch{
   DONE,
   UNLOCKED,
@@ -94,10 +120,6 @@ void setup(){
   pinMode(FIRING_PIN_2, OUTPUT);
   pinMode(FIRING_PLATE_PIN,OUTPUT);
   
-  //Begin reading the radio using the radio pins
-  radioCannonInput.begin(RADIO_IN_PIN);
-  //radioCannonOutput.begin(RADIO_OUT_PIN);
-
   //Configure elevationPID limits
   elevationPID.setOutputLimits(-175,175);
   elevationPID.setMaxIOutput(20);
@@ -110,7 +132,7 @@ void setup(){
 
   //Use the encoderHome subfile to read the absolute encoder
   ConfigElevationPWM(ABSOLUTE_ENCODER_PIN);
-  ConfigRotationPWM(BARREL_ABSOLUTE_ENCODER_PIN);
+  // ConfigRotationPWM(BARREL_ABSOLUTE_ENCODER_PIN);
   
   //Wait to ensure everything gets time to respond
   delay(30); 
@@ -123,22 +145,16 @@ void loop(){
     cannonHeartbeat=0;
     digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
   }
-  //Check if radio is connected
-//  if (radioCannonInput.read(8)<200){
-//    Serial.println("No Signal");
-//    delay(500);
-//    return;
-//  }
 
-   //Read the encoder from the subfile
+  //Read the encoder from the subfile
   currentElevation = ReadElevationDegrees();
   currentRotation= ReadRotationPWM();
   // Serial.println(currentElevation);
   // Serial.println(currentRotation);
   
   //Read Radio Channels
-  double targetElevation = radioCannonInput.read(3);
-  bool cannonTrigger = radioCannonInput.read(7) >= 1600;
+  double targetElevation =  0;//radioCannonInput.read(3);
+  bool cannonTrigger = false; //radioCannonInput.read(7) >= 1600;
   //bool sirenTrigger = radioCannonInput.read(6)>= 1600;
   ManualReloadSwitch manualReloadSwitch = DONE;
 
@@ -150,15 +166,7 @@ void loop(){
   //digitalWrite(SIREN_PIN,SIREN_OFF);
   //}
   
-  
-  //only move to unlocked if switch is in the middle position
-  if (radioCannonInput.read(8) >= 1600){
-    manualReloadSwitch = UNLOCKED;
-  }
-  else if (radioCannonInput.read(8)<=1300){
-    manualReloadSwitch = UNUSED;
-  }
-  
+    
   //Map/Lerp the Radio Signal to Angles
   if(targetElevation<10)targetElevation=10; //TODO adjust for temp hard stops
   targetElevation = map(targetElevation,1000,2000,ELEVATION_MIN_DEGREES,ELEVATION_MAX_DEGREES);
@@ -168,7 +176,9 @@ void loop(){
   if (targetElevation >= currentElevation - 10 && targetElevation <= currentElevation + 10){
     elevationAligned = true;
   }
-  if (elevationAligned == false){
+  if (false && elevationAligned == false){
+    //TODO: Reinstate this check, or otherwise resolve functionality. Temporarily disabled for testing. 
+
     //Serial.println("Move the elevation to align with hardware");
     Serial.println("Incorrect Alignment");
     delay(50);
@@ -180,10 +190,84 @@ void loop(){
   elevationServo.writeMicroseconds(elevationMotorOutput);
   
   //Run State Machine
+  cannonTrigger = millis()%3000 > 1500;
+
   run_state_machine(cannonTrigger,manualReloadSwitch);
   
   delay(10);
 }
+
+
+
+void send_telemetry(){
+  // Serial.println();
+  // Serial.print("#");
+  bool sent=false;
+
+  cannonTelemetryData.data.metadata.heartbeat += 1;
+  sent=rf95.send(cannonTelemetryData.buffer, CANNON_TELEMETRY_SIZE_BYTES);
+  // Serial.print(sent ? ">>" : "--" );
+  bool done = rf95.waitPacketSent(200);
+  // Serial.print(done ? "++" : "--" );
+
+  // prevent timing hiccups with switching radio tx/rx modes
+  // when robot is operating until better solution located
+  delay(isEnabled? 2000 : 200);
+}
+
+
+
+void recieve_input(){
+  uint8_t radiobufferlen=CANNON_CONTROL_SIZE_BYTES;
+
+  if (rf95.available()) {
+    // Serial.println();
+    // Serial.print("!");
+    if (rf95.recv(radioBuffer.buffer, &radiobufferlen)) {
+      
+      if(
+        radiobufferlen==CANNON_CONTROL_SIZE_BYTES &&
+        radioBuffer.ccd.metadata.type==PacketType::CANNON_CONTROL
+      ){
+        //valid data; Handle it appropriately
+        cannonControlData.data = radioBuffer.ccd;
+        // Serial.printf("[OK %2i%s] ",
+        //   chassisControlData.data.metadata.heartbeat,
+        //   chassisControlData.data.enable?"+":"-"
+        //   );
+
+
+        //pet the watchdog to keep the system alive
+        watchdog=0;
+      }
+      else{
+        //Some other packet type
+        //Print out info about it
+        // Serial.printf("?(%i) ",radiobufferlen);
+        // for(int i = 0; i < radiobufferlen; i++){
+        //   for(int j = 0; j < 8; j++){
+        //     Serial.print((radioBuffer.buffer[i]>>(7-j)) &1);
+        //   }
+        //   Serial.print(".");
+        // }
+        // Serial.println();
+
+      }
+    }
+  } else {
+    // Serial.print(".");
+  }
+
+  //We want this to go as fast as possible; Effectively our default task
+  delay(1);
+}
+
+
+
+/*******************
+MOVE THIS ELSEWHERE
+*******************/
+
 
 //States in the state machine
 enum State{
@@ -265,7 +349,7 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       // This should be the only state with no control/device logic
       // if the trigger for the cannon is pressed move to FIRING
       if (cannonTrigger){
-        state = FIRING;
+        state = State::FIRING;
       }
       //if the pressure release is swithed move to dump pressure
       else if(manualReloadSwitch == UNLOCKED){
@@ -370,6 +454,12 @@ void run_state_machine(bool cannonTrigger, ManualReloadSwitch manualReloadSwitch
       if (barrelEncoder.read() > TICKS_PER_BARREL/6){
         state=RELOAD_LOCKED;
       }
+      //TODO: Reconsider?
+      if (stateMachineTimer > 2000){
+        state=RELOAD_LOCKED;
+      }
+
+
     break;
     case RELOAD_LOCKED:
      //Serial.println("RELOAD_LOCKED");

@@ -109,7 +109,7 @@ struct ChassisConfig{
 
 
 
-enum CannonSimpleState{ NOTREADY=0, READY=1, FIRING=2, RELOADING=3 };
+enum CannonSimpleState{ CS_NOTREADY=0, CS_READY=1, CS_FIRING=2, CS_RELOADING=3 };
 enum SolenoidState{ DISENGAGED=0,ENGAGED=1 };
 
 struct CannonTelemetry{
@@ -133,12 +133,16 @@ struct CannonTelemetry{
     ///Current state of the index pin
     SolenoidState indexPin:1;
 };
-#define CANNON_TELEMETRY_SIZE_BYES 5 //TODO Double check this for sanity
+#define CANNON_TELEMETRY_SIZE_BYTES 5 //TODO Double check this for sanity
 
 
-struct CannonConfig{
-
+struct CannonControl{
+    Metadata metadata;
+    bool load:1;
+    bool fire:1;
+    bool enable:1;
 };
+#define CANNON_CONTROL_SIZE_BYTES 2 //TODO Double check this for sanity
 
 
 #endif
