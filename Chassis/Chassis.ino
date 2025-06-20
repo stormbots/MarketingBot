@@ -73,9 +73,9 @@ void setup() {
   Scheduler.startLoop(recieve_input);
 
   //Informative tasks for debugging
-  // Scheduler.startLoop(print_status);
+  Scheduler.startLoop(print_status);
   // Scheduler.startLoop(printControl);
-  Scheduler.startLoop(printTelemetry);
+  // Scheduler.startLoop(printTelemetry);
 }
 
 bool isEnabled=false;
@@ -172,7 +172,7 @@ void recieve_input(){
       ){
         //valid data; Handle it appropriately
         chassisControlData.data = radioBuffer.ccd;
-        // Serial.printf("[OK %2i%s] ",
+        // Serial.printf("\n[OK %2i%s] ",
         //   chassisControlData.data.metadata.heartbeat,
         //   chassisControlData.data.enable?"+":"-"
         //   );
@@ -181,17 +181,23 @@ void recieve_input(){
         //pet the watchdog to keep the system alive
         watchdog=0;
       }
+      else if(
+        radiobufferlen==CANNON_CONTROL_SIZE_BYTES &&
+        radioBuffer.ccd.metadata.type==PacketType::CANNON_CONTROL
+      ){
+        //Catch to avoid printing stuff
+      }
       else{
         //Some other packet type
         //Print out info about it
-        // Serial.printf("?(%i) ",radiobufferlen);
-        // for(int i = 0; i < radiobufferlen; i++){
-        //   for(int j = 0; j < 8; j++){
-        //     Serial.print((radioBuffer.buffer[i]>>(7-j)) &1);
-        //   }
-        //   Serial.print(".");
-        // }
-        // Serial.println();
+        Serial.printf("\n?(%i) ",radiobufferlen);
+        for(int i = 0; i < radiobufferlen; i++){
+          for(int j = 0; j < 8; j++){
+            Serial.print((radioBuffer.buffer[i]>>(7-j)) &1);
+          }
+          Serial.print(".");
+        }
+        Serial.println();
 
       }
     }

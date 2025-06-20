@@ -90,7 +90,8 @@ namespace bot {
     rightoutput = constrain(rightoutput,1000,2000);
 
     // Invert the appropriate side
-    rightoutput = map(rightoutput,1000,2000,2000,1000);
+    // rightoutput = map(rightoutput,1000,2000,2000,1000);
+    leftoutput = map(leftoutput,1000,2000,2000,1000);
 
     //Send out to the motors
     motorLeft.writeMicroseconds(leftoutput);
@@ -166,7 +167,7 @@ int maxright=0;
     // *10 // convert from volt to decivolt
     // /1024 // Divide by ADC steps to get voltage
     // ;
-    //TODO: Add board support to properly scale down 12V inputs to
+    //TODO: iAdd board support to properly scale down 12V inputs to
     return 15;
   }
 

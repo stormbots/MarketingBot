@@ -143,7 +143,11 @@ void loop(){
   //Heartbeat LED
   if (cannonHeartbeat > 1000){
     cannonHeartbeat=0;
-    digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED));
+    Serial.print("cannon ");
+    Serial.print(cannonControlData.data.metadata.heartbeat);
+    Serial.println("");
+
+    digitalWrite(BUILT_IN_LED, !digitalRead(BUILT_IN_LED) || cannonControlData.data.enable );
   }
 
   //Read the encoder from the subfile
@@ -190,8 +194,14 @@ void loop(){
   elevationServo.writeMicroseconds(elevationMotorOutput);
   
   //Run State Machine
-  cannonTrigger = millis()%3000 > 1500;
+  // cannonTrigger = millis()%3000 > 1500;
+  cannonTrigger = cannonControlData.data.fire && cannonControlData.data.enable;
 
+  if(cannonControlData.data.load){
+    manualReloadSwitch = ManualReloadSwitch::UNLOCKED;
+  }else{
+    manualReloadSwitch = ManualReloadSwitch::DONE;
+  }
   run_state_machine(cannonTrigger,manualReloadSwitch);
   
   delay(10);
@@ -226,15 +236,15 @@ void recieve_input(){
     if (rf95.recv(radioBuffer.buffer, &radiobufferlen)) {
       
       if(
-        radiobufferlen==CANNON_CONTROL_SIZE_BYTES &&
+        // radiobufferlen==CANNON_CONTROL_SIZE_BYTES &&
         radioBuffer.ccd.metadata.type==PacketType::CANNON_CONTROL
       ){
         //valid data; Handle it appropriately
         cannonControlData.data = radioBuffer.ccd;
-        // Serial.printf("[OK %2i%s] ",
-        //   chassisControlData.data.metadata.heartbeat,
-        //   chassisControlData.data.enable?"+":"-"
-        //   );
+        Serial.printf("[OK %2i%s] ",
+          cannonControlData.data.metadata.heartbeat,
+          cannonControlData.data.enable?"+":"-"
+          );
 
 
         //pet the watchdog to keep the system alive
@@ -243,19 +253,19 @@ void recieve_input(){
       else{
         //Some other packet type
         //Print out info about it
-        // Serial.printf("?(%i) ",radiobufferlen);
-        // for(int i = 0; i < radiobufferlen; i++){
-        //   for(int j = 0; j < 8; j++){
-        //     Serial.print((radioBuffer.buffer[i]>>(7-j)) &1);
-        //   }
-        //   Serial.print(".");
-        // }
-        // Serial.println();
+        Serial.printf("?(%i) ",radiobufferlen);
+        for(int i = 0; i < radiobufferlen; i++){
+          for(int j = 0; j < 8; j++){
+            Serial.print((radioBuffer.buffer[i]>>(7-j)) &1);
+          }
+          Serial.print(".");
+        }
+        Serial.println();
 
       }
     }
   } else {
-    // Serial.print(".");
+    Serial.print(".");
   }
 
   //We want this to go as fast as possible; Effectively our default task

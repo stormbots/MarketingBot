@@ -34,6 +34,12 @@ union ChassisTelemetryData {
   uint8_t buffer[CHASSIS_TELEMETRY_SIZE_BYTES];
 } chassisTelemetryData;
 
+union CannonControlData {
+  CannonControl data;
+  uint8_t buffer[CANNON_CONTROL_SIZE_BYTES];
+} cannonControlData;
+
+
 union RadioBuffer{
   ChassisControl chassisControl;
   ChassisTelemetry chassisTelemetry;
@@ -87,6 +93,10 @@ void setup() {
   Scheduler.startLoop(printChassisControl);
   Scheduler.startLoop(printChassisTelemetry);
 
+  Scheduler.startLoop(sendCannonControl);
+  // Scheduler.startLoop(printCannonControl);
+
+
   //Helpful for debugging hardware
   // Scheduler.startLoop(Buttons::printDebug);
   // Scheduler.startLoop(print_status);
@@ -106,6 +116,7 @@ void loop() {
 
 /** Monitor hardware + do the things. */
 void updateControls(){
+
   if(Buttons::home2() >1500 && chassisControlData.data.enable==false){
     chassisControlData.data.enable=true;
   }
@@ -148,6 +159,12 @@ void updateControls(){
   stick.y*=-1; //Covert y from HID standard of negative-is-away to positive robot forward
   chassisControlData.data.speed = Chassis::arcadeDrive( stick.y, stick.x*.25 );
 
+
+  cannonControlData.data.fire=Buttons::a();
+  cannonControlData.data.load=Buttons::x();
+  cannonControlData.data.enable=chassisControlData.data.enable;
+
+
   delay(10);
 }
 
@@ -173,6 +190,45 @@ void send_control() {
   cctimer = 0;
 
   delay(sleepTime.chassisControl);
+}
+
+elapsedMillis cannontimer;
+void sendCannonControl() {
+  //Observe the need of RX mode to reserve the radio;
+  //In such cases, just hang out until it passes control back
+  while (rf95.mode() == RHGenericDriver::RHModeRx) delay(1);
+  
+  cannonControlData.data.metadata.type = PacketType::CANNON_CONTROL;
+  cannonControlData.data.metadata.heartbeat+=1;
+
+  bool sent = false;
+  sent = rf95.send(cannonControlData.buffer, CANNON_CONTROL_SIZE_BYTES);
+  bool done = rf95.waitPacketSent(200);
+  // Serial.println();
+  // Serial.print("#");
+  // Serial.print(sent ? ">>" : "--");
+  // Serial.print(done ? "++" : "--");
+  cctimer = 0;
+
+  delay(sleepTime.chassisControl);
+}
+
+void printCannonControl(){
+  Serial.println();
+
+  Serial.print(" <Cannon ");
+
+  Serial.printf(
+    "%2s ",cannonControlData.data.enable?"EN":"--."
+  );
+  Serial.printf(
+    "F%2s ",cannonControlData.data.fire?"!!":"--."
+  );
+  Serial.printf(
+    "L%2s ",cannonControlData.data.load?"!!":"--."
+  );
+
+  delay(200);
 }
 
 
@@ -268,6 +324,7 @@ void printChassisTelemetry(){
 
   delay(200);
 }
+
 
 /** Print some very detailed information about the Control packets
 * May be necessary to troubleshoot communication related issues
