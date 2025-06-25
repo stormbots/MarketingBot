@@ -80,6 +80,8 @@ void setup() {
   Scheduler.startLoop(printTelemetry);
 }
 
+String enableText="EN-> Never enabled"; //big long string to preset the buffer
+
 enum State{
   STARTUP,
   NORADIO,
@@ -94,15 +96,9 @@ enum State state = STARTUP;
 void run_saftey_state_machine()
 {
   // Emergency saftey Checks
-  if (watchdog > WATCHDOG_TIMEOUT)
-  {
-    Serial.println("ENABLED -> WATCHDOGERROR");
-    state = WATCHDOGERROR;
-  }
-
   if (bot::batteryVoltage()<9)
   {
-    Serial.println("Saftey Check Error: Battery Low -> LOWBATTERY");
+    enableText = "Saftey Check Error: Battery Low -> LOWBATTERY";
     state = LOWBATTERY;
   }
 
@@ -111,7 +107,7 @@ void run_saftey_state_machine()
   switch(state)
   {
     case STARTUP:
-      Serial.println("STARTUP -> NORADIO");
+      enableText = "STARTUP -> NORADIO";
 
       state = NORADIO;
       break;
@@ -119,54 +115,62 @@ void run_saftey_state_machine()
     case NORADIO:
       if (watchdog < WATCHDOG_TIMEOUT)
       {
-        Serial.println("NORADIO -> REQUESTDISABLED");
+        enableText = "NORADIO -> REQUESTDISABLED";
         state = REQUESTDISABLED;
+        chassisControlData.data.enable=false;
       }
       else
       {
-        Serial.println("NORADIO");
+        enableText = "NORADIO";
       }
       break;
 
     case REQUESTDISABLED:
       if (chassisControlData.data.enable==true)
       {
-        Serial.println("REQUESTDISABLED -> ENABLED");
+        enableText = "REQUESTDISABLED -> ENABLED";
         state = ENABLED;
       }
       else
       {
-        Serial.println("REQUESTDISABLED");
+        enableText = "REQUESTDISABLED";
       }
       
       break;
 
     case LOWBATTERY:
-      Serial.println("LOWBATTERY");
+      enableText = "LOWBATTERY";
       
       break;
 
     case WATCHDOGERROR:
-      Serial.println("WATCHDOGERROR -> REQUESTDISABLED");
+      enableText = "WATCHDOGERROR -> REQUESTDISABLED";
       
       state = REQUESTDISABLED;
+      chassisControlData.data.enable=false;
       break;
 
     case ENABLED:
       if (chassisControlData.data.enable==false)
       {
-        Serial.println("ENABLED -> REQUESTDISABLED");
-        state = ENABLED;
+        enableText = "ENABLED -> REQUESTDISABLED";
+        state = REQUESTDISABLED;
       }
       else
       {
-        Serial.println("ENABLED");
+        enableText = "ENABLED";
+      }
+
+      if (watchdog > WATCHDOG_TIMEOUT)
+      {
+        enableText = "ENABLED -> WATCHDOGERROR";
+        state = WATCHDOGERROR;
       }
       break;
   }
 }
 
-String enableText="EN-> Never enabled"; //big long string to preset the buffer
+
 void loop() {
   run_saftey_state_machine();
 
