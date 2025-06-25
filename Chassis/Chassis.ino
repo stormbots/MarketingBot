@@ -76,8 +76,8 @@ void setup() {
 
   //Informative tasks for debugging
   // Scheduler.startLoop(print_status);
-  // Scheduler.startLoop(printControl);
-  Scheduler.startLoop(printTelemetry);
+  Scheduler.startLoop(printControl);
+  // Scheduler.startLoop(printTelemetry);
 }
 
 String enableText="EN-> Never enabled"; //big long string to preset the buffer
@@ -130,6 +130,7 @@ void run_saftey_state_machine()
       {
         enableText = "REQUESTDISABLED -> ENABLED";
         state = ENABLED;
+        bot::enable();
       }
       else
       {
