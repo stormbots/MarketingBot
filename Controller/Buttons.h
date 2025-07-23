@@ -33,7 +33,7 @@ namespace Buttons{
   // normalizeAnalog(Buttons::leftX(),131,(543+500)/2 ,886,50)
   JoystickAxesConfig configLeftY={ 
     .min=163,
-    .max=684,
+    .max=886,
     .idleMin=493,
     .idleMax=535
   };

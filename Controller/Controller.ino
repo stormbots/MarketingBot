@@ -5,7 +5,6 @@
 #include <SPI.h>
 #include <RH_RF95.h>
 #include <Scheduler.h>
-#include <Adafruit_SleepyDog.h>
 
 #include "Buttons.h"
 // #include "Pins.h"
